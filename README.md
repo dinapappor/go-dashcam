@@ -20,6 +20,33 @@ go test ./...
 
 These tests require no camera. Recording and stalled-FFmpeg shutdown have been checked manually; automated hardware tests are not implemented.
 
+## Ideal layour
+
+```
+dashcam/
+├── cmd/
+│   └── dashcam/
+│       └── main.go
+│
+├── camera/
+│   ├── camera.go
+│   └── v4l2/
+│
+├── video/
+│   ├── frame.go
+│   ├── overlay.go
+│   └── encoder.go
+│
+├── gps/
+│   └── gps.go
+│
+├── recording/
+│   └── recording.go
+│
+└── platform/
+    └── capabilities.go
+```
+
 ## Milestones
 
 - [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.

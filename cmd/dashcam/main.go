@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-	"github.com/dinapappor/go-dashcam/v4l2"
+	"github.com/dinapappor/go-dashcam/camera/v4l2"
 )
 
 func main() {

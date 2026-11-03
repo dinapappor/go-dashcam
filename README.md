@@ -20,7 +20,7 @@ go test ./...
 
 These tests require no camera. Recording and stalled-FFmpeg shutdown have been checked manually; automated hardware tests are not implemented.
 
-## Ideal layour
+## Ideal layout
 
 ```
 dashcam/

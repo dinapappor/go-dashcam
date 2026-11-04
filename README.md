@@ -63,6 +63,7 @@ dashcam/
 - **v0.2:** GPS input and location/speed overlay.
 - **v0.3:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
 - **v0.4:** Optional microphone audio synchronized with video.
+- **v0.5 (tentative):** Web UI and/or API for configuring settings.
 
 ## Targets
 

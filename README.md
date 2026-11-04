@@ -51,6 +51,7 @@ dashcam/
 
 - [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.
 - [ ] Add a configurable title overlay.
+- [ ] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
 - [ ] Read and validate GPS location and speed.
 - [ ] Add GPS overlays.
 - [ ] Stream to YouTube and configurable destinations, with reconnection after outages.

@@ -1,6 +1,8 @@
 package v4l2
 
 import (
+	"os"
+	"errors"
 	"testing"
 	"unsafe"
 	"syscall"
@@ -681,5 +683,236 @@ func TestFrameBytesZeroLength(t *testing.T) {
 
 	if len(got) != 0 {
 		t.Fatalf("Expected 0 bytes, got %d", len(got))
+	}
+}
+
+func TestQueryCapabilityNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = QueryCapability(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestQueryCapabilityInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = QueryCapability(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestQueryVideoCaptureFormatNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = QueryVideoCaptureFormat(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestQueryVideoCaptureFormatInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = QueryVideoCaptureFormat(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestSetVideoCaptureFormatNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = SetVideoCaptureFormat(file.Fd(), 1280, 720, PixFmtMJPEG)
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestSetVideoCaptureFormatInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = SetVideoCaptureFormat(fd, 1280, 720, PixFmtMJPEG)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestQueryVideoCaptureStreamParamsNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = QueryVideoCaptureStreamParams(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestQueryVideoCaptureStreamParamsInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = QueryVideoCaptureStreamParams(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestSetVideoCaptureStreamParamsNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = SetVideoCaptureStreamParams(file.Fd(), 1, 30)
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestSetVideoCaptureStreamParamsInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = SetVideoCaptureStreamParams(fd, 1, 30)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestRequestMmapBuffersNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = RequestMmapBuffers(file.Fd(), 4)
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestRequestMmapBuffersInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = RequestMmapBuffers(fd, 4)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestQueryBufferNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = QueryBuffer(file.Fd(), 1)
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestQueryBufferInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = QueryBuffer(fd, 1)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
 	}
 }

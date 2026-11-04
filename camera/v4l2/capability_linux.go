@@ -268,3 +268,17 @@ func QueueBuffer(fd uintptr, buffer V4L2Buffer) error {
 	}
 	return nil
 }
+
+func DequeueBuffer(fd uintptr) (V4L2Buffer, error) {
+	completedBuffer := V4L2Buffer{}
+	completedBuffer.Type = BufTypeVideoCapture
+	completedBuffer.Memory = MemoryMmap
+
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocDQBuf, uintptr(unsafe.Pointer(&completedBuffer)))
+
+	if errno != 0 {
+		return V4L2Buffer{}, fmt.Errorf("Errno: %w", errno)
+	}
+
+	return completedBuffer, nil
+}

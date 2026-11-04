@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -273,13 +274,10 @@ func main() {
 	}()
 
 	for frameNumber := 0; frameNumber < 300 && ctx.Err() == nil; {
-		completedBuffer := v4l2.V4L2Buffer{}
-		completedBuffer.Type = v4l2.BufTypeVideoCapture
-		completedBuffer.Memory = v4l2.MemoryMmap
+		// Dequeue bufferss
+		completedBuffer, err := v4l2.DequeueBuffer(f.Fd())
 
-		_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), v4l2.VidiocDQBuf, uintptr(unsafe.Pointer(&completedBuffer)))
-
-		if errno == syscall.EAGAIN {
+		if errors.Is(err, syscall.EAGAIN) {
 			select {
 			case <- ctx.Done():
 				return
@@ -288,10 +286,11 @@ func main() {
 			continue
 		}
 
-		if errno != 0 {
-			log.Printf("Unable to dequeue buffer. Got %+v", errno)
+		if err != nil {
+			log.Printf("Unable to dequeue buffer. Got %+v", err)
 			return
 		}
+
 
 		if completedBuffer.Flags&v4l2.BufFlagError != 0 {
 			log.Printf("Frame was marked as damaged")

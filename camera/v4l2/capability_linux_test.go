@@ -1013,3 +1013,35 @@ func TestQueueBufferInvalidFD(t *testing.T) {
 	}
 }
 
+func TestDequeueBufferNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	_, err = DequeueBuffer(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestDequeueBufferInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	_, err = DequeueBuffer(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}

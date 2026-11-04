@@ -57,6 +57,13 @@ dashcam/
 - [ ] Stream to YouTube and configurable destinations, with reconnection after outages.
 - [ ] Add optional microphone audio with video synchronization.
 
+## Version goals
+
+- **v0.1:** Title overlay drawn in Go, configurable recording segments or continuous recording, and oldest-file cleanup.
+- **v0.2:** GPS input and location/speed overlay.
+- **v0.3:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
+- **v0.4:** Optional microphone audio synchronized with video.
+
 ## Targets
 
 Development currently uses Linux. Raspberry Pi 4 and 5 are the first deployment targets; the complete pipeline still needs benchmarking on both.

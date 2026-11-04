@@ -251,3 +251,20 @@ func MapBuffer(fd uintptr, buffer V4L2Buffer) ([]byte, error) {
 	}
 	return data, nil
 }
+
+func QueueBuffer(fd uintptr, buffer V4L2Buffer) error {
+	buffer.Memory = MemoryMmap
+	buffer.Flags = 0
+
+	_, _, errno := syscall.Syscall(
+		syscall.SYS_IOCTL,
+		fd,
+		VidiocQBuf,
+		uintptr(unsafe.Pointer(&buffer)),
+	)
+
+	if errno != 0 {
+		return fmt.Errorf("Could not queue buffer %d: %w", buffer.Index, errno)
+	}
+	return nil
+}

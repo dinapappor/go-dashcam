@@ -218,21 +218,12 @@ func main() {
 		// Let's store the data off buffers in buffers
 		buffers[index] = data
 
-		buffer.Memory = v4l2.MemoryMmap
 
 		log.Printf("Mapped buffer: %d bytes", len(data))
 
-		buffer.Flags = 0
-
-		_, _, errno := syscall.Syscall(
-			syscall.SYS_IOCTL,
-			f.Fd(),
-			v4l2.VidiocQBuf,
-			uintptr(unsafe.Pointer(&buffer)),
-		)
-
-		if errno != 0 {
-			log.Printf("Could not queue buffer %d: %v", index, errno)
+		err = v4l2.QueueBuffer(f.Fd(), buffer)
+		if err != nil {
+			log.Printf("Could not queue buffer: %v", err)
 			return
 		}
 	}
@@ -341,13 +332,9 @@ func main() {
 			}
 		}
 
-		completedBuffer.Flags = 0
-
-		// Requeue after finishing with the frame
-		_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), v4l2.VidiocQBuf, uintptr(unsafe.Pointer(&completedBuffer)))
-
-		if errno != 0 {
-			log.Printf("Unable to requeue buffer")
+		err = v4l2.QueueBuffer(f.Fd(), completedBuffer)
+		if err != nil {
+			log.Printf("Could not requeue the buffer: %v", err)
 			return
 		}
 		frameNumber++

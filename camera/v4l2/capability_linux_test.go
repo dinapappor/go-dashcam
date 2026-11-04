@@ -916,3 +916,100 @@ func TestQueryBufferInvalidFD(t *testing.T) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
+
+func TestMapBufferInvalidFD(t *testing.T) {
+        file, err := os.CreateTemp(t.TempDir(), "fake")
+        if err != nil {
+                t.Fatalf("Unable to open temporary file: %v", err)
+        }
+
+        fd := file.Fd()
+        file.Close()
+
+        var buffer V4L2Buffer
+        buffer.Length = 4096
+
+        _, err = MapBuffer(fd, buffer)
+
+        if !errors.Is(err, syscall.EBADF) {
+                t.Fatalf("Expected EBADF, got %v", err)
+        }
+}
+
+func TestMapBufferZeroLength(t *testing.T) {
+        file, err := os.CreateTemp(t.TempDir(), "fake")
+        if err != nil {
+                t.Fatalf("Unable to open temporary file: %v", err)
+        }
+        defer file.Close()
+
+        var buffer V4L2Buffer
+
+        _, err = MapBuffer(file.Fd(), buffer)
+
+        if !errors.Is(err, syscall.EINVAL) {
+                t.Fatalf("Expected EINVAL, got %v", err)
+        }
+}
+
+func TestMapBufferSuccess(t *testing.T) {
+        file, err := os.CreateTemp(t.TempDir(), "fake")
+        if err != nil {
+                t.Fatalf("Unable to open temporary file: %v", err)
+        }
+        defer file.Close()
+
+        if err := file.Truncate(4096); err != nil {
+                t.Fatalf("Unable to resize temporary file: %v", err)
+        }
+
+        var buffer V4L2Buffer
+        buffer.Length = 4096
+
+        data, err := MapBuffer(file.Fd(), buffer)
+        if err != nil {
+                t.Fatalf("Expected success, got %v", err)
+        }
+        defer syscall.Munmap(data)
+
+        if len(data) != 4096 {
+                t.Fatalf("Expected 4096 bytes, got %d", len(data))
+        }
+}
+
+
+func TestQueueBufferNotV4L2Device(t *testing.T) {
+	testBuf := V4L2Buffer{}
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	err = QueueBuffer(file.Fd(), testBuf)
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestQueueBufferInvalidFD(t *testing.T) {
+	testBuf := V4L2Buffer{}
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	err = QueueBuffer(fd, testBuf)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+

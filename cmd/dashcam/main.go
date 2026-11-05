@@ -187,46 +187,12 @@ func main() {
 
 	log.Printf("%+v", requestedParams.Capture.TimePerFrame)
 
-	requestBuffers, err := v4l2.RequestMmapBuffers(device.Fd(), 4)
+	err = device.SetupBuffers(4)
 
 	if err != nil {
-		log.Printf("Unable to request buffers, got %s", err)
+		log.Printf("Unable to setup buffers: %v", err)
 		return
 	}
-
-	log.Printf("Request buffers: %d", requestBuffers.Count)
-
-	// Store buffers
-	buffers := make([][]byte, requestBuffers.Count)
-	for index := uint32(0); index < requestBuffers.Count; index++ {
-		buffer, err := v4l2.QueryBuffer(device.Fd(), index)
-
-		if err != nil {
-			log.Printf("Could not query buffer, got %s", err)
-			return
-		}
-
-		data, err := v4l2.MapBuffer(device.Fd(), buffer)
-
-		if err != nil {
-			log.Printf("Could not map buffer: %v", err)
-			return
-		}
-		defer syscall.Munmap(data)
-
-		// Let's store the data off buffers in buffers
-		buffers[index] = data
-
-
-		log.Printf("Mapped buffer: %d bytes", len(data))
-
-		err = v4l2.QueueBuffer(device.Fd(), buffer)
-		if err != nil {
-			log.Printf("Could not queue buffer: %v", err)
-			return
-		}
-	}
-
 	err = cmd.Start()
 
 	if err != nil {
@@ -293,7 +259,7 @@ func main() {
 			}
 
 			frame, err := v4l2.FrameBytes(
-				buffers,
+				device.Buffers(),
 				completedBuffer.Index,
 				completedBuffer.BytesUsed,
 			)

@@ -73,14 +73,11 @@ func main() {
 
 
 	// open the video device
-	device, err := os.OpenFile(
-		*videoDevice,
-		os.O_RDWR|syscall.O_NONBLOCK,
-		0,
-	)
+	device, err := v4l2.Open(*videoDevice)
 
 	if err != nil {
-		log.Fatalf("%s: %s", *videoDevice, err)
+		log.Printf("%s: %s", *videoDevice, err)
+		return
 	}
 
 	defer device.Close()

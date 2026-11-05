@@ -282,3 +282,23 @@ func DequeueBuffer(fd uintptr) (V4L2Buffer, error) {
 
 	return completedBuffer, nil
 }
+
+func StreamOn(fd uintptr) error {
+	bufferType := uint32(BufTypeVideoCapture)
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocStreamOn, uintptr(unsafe.Pointer(&bufferType)))
+
+	if errno != 0 {
+		return fmt.Errorf("Unable to set stream on: %w", errno)
+	}
+	return nil
+}
+
+func StreamOff(fd uintptr) error {
+	bufferType := uint32(BufTypeVideoCapture)
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocStreamOff, uintptr(unsafe.Pointer(&bufferType)))
+
+	if errno != 0 {
+		return fmt.Errorf("Unable to set stream off: %w", errno)
+	}
+	return nil
+}

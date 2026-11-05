@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"unsafe"
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
 )
 
@@ -253,23 +252,18 @@ func main() {
 			log.Printf("FFmpeg failed: %v", waitErr)
 		}
 	}()
-	bufferType := uint32(v4l2.BufTypeVideoCapture)
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, device.Fd(), v4l2.VidiocStreamOn, uintptr(unsafe.Pointer(&bufferType)))
-
-	if errno != 0 {
-		log.Printf("Unable to start stream. Got %+v", errno)
+	err = v4l2.StreamOn(device.Fd())
+	if err != nil {
+		log.Printf("Unable to start stream: %v", err)
 		return
 	}
+
 	defer func() {
-		_, _, stopErr := syscall.Syscall(
-			syscall.SYS_IOCTL,
-			device.Fd(),
-			v4l2.VidiocStreamOff,
-			uintptr(unsafe.Pointer(&bufferType)),
-		)
-		if stopErr != 0 {
-			log.Printf("Unable to stop stream: %v", stopErr)
+		err := v4l2.StreamOff(device.Fd())
+		if err != nil {
+			log.Printf("Unable to stop stream: %v", err)
+			return
 		}
 	}()
 

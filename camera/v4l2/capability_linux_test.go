@@ -1045,3 +1045,69 @@ func TestDequeueBufferInvalidFD(t *testing.T) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
+
+func TestStreamOnNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	err = StreamOn(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestStreamOnInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	err = StreamOn(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}
+
+func TestStreamOffNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	err = StreamOff(file.Fd())
+
+	if ! errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl")
+	}
+}
+
+func TestStreamOffInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	err = StreamOff(fd)
+
+	if ! errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+}

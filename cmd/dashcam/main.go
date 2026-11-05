@@ -20,6 +20,8 @@ func main() {
 
 	output := flag.String("output", "video.mp4", "Which filename to output to")
 
+	debug := flag.Bool("debug", false, "Whether or not to print debug flags")
+
 
 	flag.Parse()
 
@@ -289,8 +291,9 @@ func main() {
 		if completedBuffer.Flags&v4l2.BufFlagError != 0 {
 			log.Printf("Frame was marked as damaged")
 		} else {
-
-			log.Printf("Buffer: %d, bytes used: %d", completedBuffer.Index, completedBuffer.BytesUsed)
+			if *debug {
+				log.Printf("Buffer: %d, bytes used: %d", completedBuffer.Index, completedBuffer.BytesUsed)
+			}
 
 			frame, err := v4l2.FrameBytes(
 				buffers,
@@ -303,7 +306,9 @@ func main() {
 				return
 			}
 
-			log.Printf("Length of frame: %d", len(frame))
+			if *debug {
+				log.Printf("Length of frame: %d", len(frame))
+			}
 
 			err = ffmpegInput.SetWriteDeadline(time.Now().Add(2 * time.Second))
 

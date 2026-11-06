@@ -1,15 +1,22 @@
 package v4l2
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
-	"errors"
+	"time"
 )
 
 type Device struct {
 	file    *os.File
 	buffers [][]byte
+}
+
+type Frame struct {
+	buffer V4L2Buffer
+	Data   []byte
 }
 
 func Open(path string) (*Device, error) {
@@ -84,4 +91,56 @@ func (d *Device) SetupBuffers(count uint32) error {
 
 func (d *Device) Buffers() [][]byte {
 	return d.buffers
+}
+
+func (d *Device) NextFrame(ctx context.Context) (Frame, error) {
+
+	for {
+		completedBuffer, err := DequeueBuffer(d.Fd())
+
+		if errors.Is(err, syscall.EAGAIN) {
+			select {
+				case <- ctx.Done():
+					return Frame{}, ctx.Err()
+				case <- time.After(10 * time.Millisecond):
+				}
+				continue
+		}
+
+		if err != nil {
+			return Frame{}, fmt.Errorf("Not able to dequeue: %w", err)
+		}
+
+		if completedBuffer.Flags&BufFlagError != 0 {
+			err = QueueBuffer(d.Fd(), completedBuffer)
+			if err != nil {
+				return Frame{}, fmt.Errorf("Could not reqeueue buffer for damaged frame: %w", err)
+			}
+			continue
+
+		}
+		frame, err := FrameBytes(
+			d.Buffers(),
+			completedBuffer.Index,
+			completedBuffer.BytesUsed,
+		)
+
+		if err != nil {
+			requeueErr := QueueBuffer(d.Fd(), completedBuffer)
+			if requeueErr != nil {
+				return Frame{}, errors.Join(err, fmt.Errorf("Unable to requeue buffer after failed FrameBytes: %w", requeueErr))
+			}
+			return Frame{}, fmt.Errorf("Unable to read buffers, got %w", err)
+		}
+		return Frame{buffer: completedBuffer, Data: frame}, nil
+	}
+}
+
+func (d *Device) Requeue(frame Frame) error {
+	err := QueueBuffer(d.Fd(), frame.buffer)
+
+	if err != nil {
+		return fmt.Errorf("Could not requeue: %w", err)
+	}
+	return nil
 }

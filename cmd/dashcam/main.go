@@ -20,7 +20,7 @@ func main() {
 
 	output := flag.String("output", "video.mp4", "Which filename to output to")
 
-	debug := flag.Bool("debug", false, "Whether or not to print debug flags")
+	//debug := flag.Bool("debug", false, "Whether or not to print debug flags")
 
 
 	flag.Parse()
@@ -233,67 +233,39 @@ func main() {
 	}()
 
 	for frameNumber := 0; frameNumber < 300 && ctx.Err() == nil; {
-		// Dequeue bufferss
-		completedBuffer, err := v4l2.DequeueBuffer(device.Fd())
+		// Get frames
+		frame, err := device.NextFrame(ctx)
 
-		if errors.Is(err, syscall.EAGAIN) {
-			select {
-			case <- ctx.Done():
-				return
-			case <- time.After(10 * time.Millisecond):
-			}
-			continue
-		}
-
-		if err != nil {
-			log.Printf("Unable to dequeue buffer. Got %+v", err)
+		if errors.Is(err, context.Canceled) {
+			log.Printf("Shutting down")
 			return
 		}
 
-
-		if completedBuffer.Flags&v4l2.BufFlagError != 0 {
-			log.Printf("Frame was marked as damaged")
-		} else {
-			if *debug {
-				log.Printf("Buffer: %d, bytes used: %d", completedBuffer.Index, completedBuffer.BytesUsed)
-			}
-
-			frame, err := v4l2.FrameBytes(
-				device.Buffers(),
-				completedBuffer.Index,
-				completedBuffer.BytesUsed,
-			)
-
-			if err != nil {
-				log.Printf("Unable to read buffers, got %s", err)
-				return
-			}
-
-			if *debug {
-				log.Printf("Length of frame: %d", len(frame))
-			}
-
-			err = ffmpegInput.SetWriteDeadline(time.Now().Add(2 * time.Second))
-
-			if err != nil {
-				log.Printf("Could not set a writedeadline for ffmpeg pipe, err: %s", err)
-				return
-			}
-
-			written, err := ffmpegInput.Write(frame)
-
-			if err != nil {
-				log.Printf("Could not write frame to FFmpeg: %v", err)
-				return
-			}
-
-			if written != len(frame) {
-				log.Printf("Incomplete frame write: %d of %d bytes", written, len(frame))
-				return
-			}
+		if err != nil {
+			log.Printf("Unable to get frame. Got %+v", err)
+			return
 		}
 
-		err = v4l2.QueueBuffer(device.Fd(), completedBuffer)
+		err = ffmpegInput.SetWriteDeadline(time.Now().Add(2 * time.Second))
+
+		if err != nil {
+			log.Printf("Could not set deadline for ffmpeg: %v", err)
+			return
+		}
+
+		written, err := ffmpegInput.Write(frame.Data)
+
+		if err != nil {
+			log.Printf("Could not write data to ffmpeg: %v", err)
+			return
+		}
+
+		if written != len(frame.Data) {
+			log.Printf("Incomplete frame write: %d of %d bytes", written, len(frame.Data))
+			return
+		}
+
+		err = device.Requeue(frame)
 		if err != nil {
 			log.Printf("Could not requeue the buffer: %v", err)
 			return

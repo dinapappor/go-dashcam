@@ -204,3 +204,27 @@ func TestRequeueClosedDevice(t *testing.T) {
 		t.Errorf("Requeue should fail with EBADF, got %v", err)
 	}
 }
+
+func TestCloseStreamingNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to create temporary file: %v", err)
+	}
+	file.Close()
+
+	d, err := Open(file.Name())
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	d.streaming = true
+
+	err = d.Close()
+	if !errors.Is(err, syscall.ENOTTY) {
+		t.Errorf("Close should report ENOTTY from StreamOff, got %v", err)
+	}
+
+	err = d.Close()
+	if !errors.Is(err, os.ErrClosed) {
+		t.Errorf("File should be closed even when StreamOff fails, got %v", err)
+	}
+}

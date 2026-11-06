@@ -80,7 +80,11 @@ func main() {
 		return
 	}
 
-	defer device.Close()
+	defer func() {
+		if err := device.Close(); err != nil {
+			log.Printf("Unable to close device: %v", err)
+		}
+	}()
 
 	deviceCapability, err := v4l2.QueryCapability(device.Fd())
 
@@ -218,19 +222,11 @@ func main() {
 		}
 	}()
 
-	err = v4l2.StreamOn(device.Fd())
+	err = device.StreamOn()
 	if err != nil {
 		log.Printf("Unable to start stream: %v", err)
 		return
 	}
-
-	defer func() {
-		err := v4l2.StreamOff(device.Fd())
-		if err != nil {
-			log.Printf("Unable to stop stream: %v", err)
-			return
-		}
-	}()
 
 	for frameNumber := 0; frameNumber < 300 && ctx.Err() == nil; {
 		// Get frames

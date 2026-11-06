@@ -10,8 +10,9 @@ import (
 )
 
 type Device struct {
-	file    *os.File
-	buffers [][]byte
+	file      *os.File
+	buffers   [][]byte
+	streaming bool
 }
 
 type Frame struct {
@@ -36,7 +37,14 @@ func Open(path string) (*Device, error) {
 func (d *Device) Close() error {
 
 	// Store all errors
-	var unmapErr error
+	var closeErr error
+
+	if d.streaming {
+		err := d.StreamOff()
+		if err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("Unable to shut down stream: %w", err))
+		}
+	}
 	// Munmap all the buffers
 	for index := range d.buffers {
 		// In case we already closed the buffer
@@ -44,11 +52,11 @@ func (d *Device) Close() error {
 			continue
 		}
 		if err := syscall.Munmap(d.buffers[index]); err != nil {
-			unmapErr = errors.Join(unmapErr, fmt.Errorf("unmap buffer %d: %w", index, err))
+			closeErr = errors.Join(closeErr, fmt.Errorf("unmap buffer %d: %w", index, err))
 		}
 		d.buffers[index] = nil
 	}
-	return errors.Join(unmapErr, d.file.Close())
+	return errors.Join(closeErr, d.file.Close())
 }
 
 func (d *Device) Fd() uintptr {
@@ -142,5 +150,27 @@ func (d *Device) Requeue(frame Frame) error {
 	if err != nil {
 		return fmt.Errorf("Could not requeue: %w", err)
 	}
+	return nil
+}
+
+func (d *Device) StreamOn() error {
+	// StreamOn below is from v4l2, not this method
+	err := StreamOn(d.Fd())
+
+	if err != nil {
+		return fmt.Errorf("Unable to set stream on: %w", err)
+	}
+	d.streaming = true
+	return nil
+}
+
+func (d *Device) StreamOff() error {
+	// StreamOn below is from v4l2, not this method
+	err := StreamOff(d.Fd())
+
+	if err != nil {
+		return fmt.Errorf("Unable to set stream off: %w", err)
+	}
+	d.streaming = false
 	return nil
 }

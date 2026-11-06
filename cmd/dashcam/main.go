@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"os/signal"
-	"syscall"
-	"time"
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
+	"github.com/dinapappor/go-dashcam/video"
 )
 
 func main() {
@@ -27,50 +25,6 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-
-	// Look for ffmpeg
-	ffmpeg, err :=  exec.LookPath("ffmpeg")
-	if err != nil {
-		log.Printf("Could not find ffmpeg in path")
-		return
-	}
-
-	log.Printf("FFmpeg path: %s", ffmpeg)
-
-	cmd := exec.Command(ffmpeg,
-		"-hide_banner",
-		"-f", "mjpeg",
-		"-framerate", "30",
-		"-i", "pipe:0",
-		"-n",
-		"-c:v", "libx264",
-		"-pix_fmt", "yuv420p",
-		*output,
-	)
-	cmd.Stderr = os.Stderr
-
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-
-	pipeReader, ffmpegInput, err := os.Pipe()
-	if err != nil {
-		log.Printf("create FFmpeg pipe: %v", err)
-		return
-	}
-
-	defer pipeReader.Close()
-	defer ffmpegInput.Close()
-
-	cmd.Stdin = pipeReader
-
-
-	stopPipeClose := context.AfterFunc(ctx, func() {
-		ffmpegInput.Close()
-	})
-	defer stopPipeClose()
-
 
 	// open the video device
 	device, err := v4l2.Open(*videoDevice)
@@ -197,28 +151,15 @@ func main() {
 		log.Printf("Unable to setup buffers: %v", err)
 		return
 	}
-	err = cmd.Start()
 
-	if err != nil {
-		log.Printf("Could not start FFmpeg: %v", err)
-		return
-	}
-
-	pipeReader.Close()
+	encoder, err := video.NewEncoder(
+		[]string{"-f", "mjpeg", "-framerate", "30"},
+		[]string{"-n", "-c:v", "libx264", "-pix_fmt", "yuv420p", *output},
+	)
 
 	defer func() {
-		ffmpegInput.Close()
-
-		timer := time.AfterFunc(5*time.Second, func() {
-			log.Printf("FFmpeg shutdown timed out; stopping it")
-			if err := cmd.Process.Kill(); err != nil {
-				log.Printf("Could not kill FFmpeg: %v", err)
-			}
-		})
-		defer timer.Stop()
-
-		if waitErr := cmd.Wait(); waitErr != nil {
-			log.Printf("FFmpeg failed: %v", waitErr)
+		if err := encoder.Close(); err != nil {
+			log.Printf("FFmpeg did not finish correctly: %v", err)
 		}
 	}()
 
@@ -242,25 +183,11 @@ func main() {
 			return
 		}
 
-		err = ffmpegInput.SetWriteDeadline(time.Now().Add(2 * time.Second))
-
+		err = encoder.WriteFrame(frame.Data)
 		if err != nil {
-			log.Printf("Could not set deadline for ffmpeg: %v", err)
+			log.Printf("Could not write data to encoder: %v", err)
 			return
 		}
-
-		written, err := ffmpegInput.Write(frame.Data)
-
-		if err != nil {
-			log.Printf("Could not write data to ffmpeg: %v", err)
-			return
-		}
-
-		if written != len(frame.Data) {
-			log.Printf("Incomplete frame write: %d of %d bytes", written, len(frame.Data))
-			return
-		}
-
 		err = device.Requeue(frame)
 		if err != nil {
 			log.Printf("Could not requeue the buffer: %v", err)

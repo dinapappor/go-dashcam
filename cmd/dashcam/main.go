@@ -8,15 +8,16 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
 	"github.com/dinapappor/go-dashcam/video"
+	"github.com/dinapappor/go-dashcam/recording"
 )
 
 func main() {
 	// Flags
 	videoDevice := flag.String("video_device", "/dev/video0", "Which video device to use")
 
-	output := flag.String("output", "video.mp4", "Which filename to output to")
 
 	//debug := flag.Bool("debug", false, "Whether or not to print debug flags")
 
@@ -152,10 +153,29 @@ func main() {
 		return
 	}
 
+	recordingConfig := recording.Config{
+		Mode:            recording.Segmented,
+		SegmentDuration: 10 * time.Second,
+		OutputDirectory: "videos",
+		FrameRate:       30,
+	}
+
+	outputArgs, err := recording.OutputArgs(recordingConfig, time.Now())
+	if err != nil {
+		log.Printf("Outputargs: %v", err)
+		return
+	}
+
+	outputArgs = append([]string{"-c:v", "libx264", "-pix_fmt", "yuv420p"}, outputArgs...)
 	encoder, err := video.NewEncoder(
 		[]string{"-f", "mjpeg", "-framerate", "30"},
-		[]string{"-n", "-c:v", "libx264", "-pix_fmt", "yuv420p", *output},
+		outputArgs,
 	)
+
+	if err != nil {
+		log.Printf("Unable to start encoder: %v", err)
+		return
+	}
 
 	defer func() {
 		if err := encoder.Close(); err != nil {
@@ -169,7 +189,7 @@ func main() {
 		return
 	}
 
-	for frameNumber := 0; frameNumber < 300 && ctx.Err() == nil; {
+	for frameNumber := 0; frameNumber < 900 && ctx.Err() == nil; {
 		// Get frames
 		frame, err := device.NextFrame(ctx)
 

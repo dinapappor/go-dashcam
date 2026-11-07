@@ -22,36 +22,51 @@ These tests require no camera. Recording and stalled-FFmpeg shutdown have been c
 
 ## Ideal layout
 
+Current packages and planned additions are shown below. Add future packages when
+their milestone starts; the camera interface and platform package wait until a
+second backend or OS needs them.
+
 ```
-dashcam/
+go-dashcam/
 ├── cmd/
 │   └── dashcam/
 │       └── main.go
+│
+├── config/
+│   └── config.go
 │
 ├── camera/
 │   ├── camera.go
 │   └── v4l2/
 │
-├── video/
-│   ├── frame.go
-│   ├── overlay.go
-│   └── encoder.go
+├── overlay/
+│   └── overlay.go
 │
-├── gps/
-│   └── gps.go
+├── video/
+│   └── ffmpeg.go
 │
 ├── recording/
-│   └── recording.go
+│   ├── recording.go
+│   ├── cleanup.go
+│   ├── monitor.go
+│   └── diskspace_linux.go
+│
+├── gps/
+│
+├── stream/
 │
 └── platform/
-    └── capabilities.go
 ```
+
+`main` connects the packages. Lower-level packages do not import `main` or the
+application-wide `config` package. Overlay drawing stays independent of the
+encoder so it can support both decoded MJPEG and packed YUYV frames.
 
 ## Milestones
 
 - [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.
 - [ ] Add a configurable title overlay.
-- [ ] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
+- [x] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
 - [ ] Read and validate GPS location and speed.
 - [ ] Add GPS overlays.
 - [ ] Stream to YouTube and configurable destinations, with reconnection after outages.

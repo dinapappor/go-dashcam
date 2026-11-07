@@ -1,37 +1,57 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"log"
 	"os"
 	"os/signal"
 	"time"
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
-	"github.com/dinapappor/go-dashcam/video"
+	"github.com/dinapappor/go-dashcam/config"
+	"github.com/dinapappor/go-dashcam/overlay"
 	"github.com/dinapappor/go-dashcam/recording"
+	"github.com/dinapappor/go-dashcam/video"
 )
 
 func main() {
-	// Flags
-	videoDevice := flag.String("video_device", "/dev/video0", "Which video device to use")
-
-
-	//debug := flag.Bool("debug", false, "Whether or not to print debug flags")
-
-
-	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	// open the video device
-	device, err := v4l2.Open(*videoDevice)
+	dashcamConfig, err := config.ParseConfig("/home/andreas/dashcam_config.json")
+
 
 	if err != nil {
-		log.Printf("%s: %s", *videoDevice, err)
+		log.Printf("Could not open config file %v", err)
+		return
+	}
+
+	overlayConfig := overlay.Config{Title: dashcamConfig.DashcamTitle}
+
+	dashcamTitleImageGray, dashcamTitleImageAlpha := overlay.RenderTitle(overlayConfig)
+
+
+	segmentDuration, err := dashcamConfig.GetSegmentDuration()
+
+	if err != nil {
+		log.Printf("Could not get segment duration: %v", err)
+		return
+	}
+
+	log.Printf("duration: %s", segmentDuration)
+
+	log.Printf("%+v\n", dashcamConfig)
+
+	// open the video device
+	device, err := v4l2.Open(dashcamConfig.VideoConfig.VideoSource)
+
+	if err != nil {
+		log.Printf("%s: %s", dashcamConfig.VideoConfig.VideoSource, err)
 		return
 	}
 
@@ -73,7 +93,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Video device: %s (%s), using %s driver on %s\n", cameraName, *videoDevice, driverName, busInfo)
+	fmt.Printf("Video device: %s (%s), using %s driver on %s\n", cameraName, dashcamConfig.VideoConfig.VideoSource, driverName, busInfo)
 
 	capabilities := v4l2.SelectCapabilities(deviceCapability)
 
@@ -109,7 +129,12 @@ func main() {
 
 	log.Printf("Pixformat: %s", fourCC)
 
-	requestedFormat, err := v4l2.SetVideoCaptureFormat(device.Fd(), 1280, 720, v4l2.PixFmtMJPEG)
+	requestedFormat, err := v4l2.SetVideoCaptureFormat(
+		device.Fd(),
+		dashcamConfig.VideoConfig.Width,
+		dashcamConfig.VideoConfig.Height,
+		v4l2.PixFmtMJPEG,
+	)
 
 	if err != nil {
 		log.Printf("Unable to set format: %s", err)
@@ -136,7 +161,7 @@ func main() {
 		return
 	}
 
-	requestedParams, err := v4l2.SetVideoCaptureStreamParams(device.Fd(), 1, 30)
+	requestedParams, err := v4l2.SetVideoCaptureStreamParams(device.Fd(), 1, dashcamConfig.VideoConfig.FramesPerSecond)
 
 	if err != nil {
 		log.Printf("Unable to set stream params, got %s", err)
@@ -153,11 +178,17 @@ func main() {
 		return
 	}
 
+	mode := recording.Continuous
+
+	if dashcamConfig.VideoConfig.Segmented {
+		mode = recording.Segmented
+	}
+
 	recordingConfig := recording.Config{
-		Mode:            recording.Segmented,
-		SegmentDuration: 10 * time.Second,
+		Mode:            mode,
+		SegmentDuration: segmentDuration,
 		OutputDirectory: "videos",
-		FrameRate:       30,
+		FrameRate:       dashcamConfig.VideoConfig.FramesPerSecond,
 	}
 
 	outputArgs, err := recording.OutputArgs(recordingConfig, time.Now())
@@ -168,7 +199,7 @@ func main() {
 
 	outputArgs = append([]string{"-c:v", "libx264", "-pix_fmt", "yuv420p"}, outputArgs...)
 	encoder, err := video.NewEncoder(
-		[]string{"-f", "mjpeg", "-framerate", "30"},
+		[]string{"-f", "rawvideo", "-pix_fmt", "yuvj422p", "-video_size", "1280x720", "-framerate", fmt.Sprint(dashcamConfig.VideoConfig.FramesPerSecond)},
 		outputArgs,
 	)
 
@@ -177,8 +208,23 @@ func main() {
 		return
 	}
 
+	monitorResult := make(chan error, 1)
+
+	go func() {
+		err := recording.Monitor(ctx, recordingConfig.OutputDirectory, 10*time.Second)
+		if err != nil {
+			// stop is from the context
+			stop()
+		}
+		monitorResult <- err
+	}()
+
 	defer func() {
-		if err := encoder.Close(); err != nil {
+		stop()
+		if err := <-monitorResult; err != nil {
+			log.Printf("Recording monitor failed: %v", err)
+		}
+		if err = encoder.Close(); err != nil {
 			log.Printf("FFmpeg did not finish correctly: %v", err)
 		}
 	}()
@@ -188,6 +234,9 @@ func main() {
 		log.Printf("Unable to start stream: %v", err)
 		return
 	}
+
+	// Used for the decoded image
+	var rawFrame []byte
 
 	for frameNumber := 0; frameNumber < 900 && ctx.Err() == nil; {
 		// Get frames
@@ -203,7 +252,53 @@ func main() {
 			return
 		}
 
-		err = encoder.WriteFrame(frame.Data)
+		// decode the image so we can draw title overlay over it
+		decoded, err := jpeg.Decode(bytes.NewReader(frame.Data))
+
+		if err != nil {
+			log.Printf("Unable to decode jpeg: %v", err)
+			err = device.Requeue(frame)
+			if err != nil {
+				log.Printf("Could not requeue the buffer: %v", err)
+				return
+			}
+
+			continue
+		}
+
+		ycbcr, ok := decoded.(*image.YCbCr)
+
+		if !ok {
+			log.Printf("Unexpexted image type %T", decoded)
+
+			// Requeue the buffer again
+			err = device.Requeue(frame)
+			if err != nil {
+				log.Printf("Could not requeue the buffer: %v", err)
+				return
+			}
+
+			continue
+		}
+
+		overlay.BlendTitle(
+			ycbcr.Y,
+			ycbcr.YStride,
+			ycbcr.Rect.Dx(),
+			ycbcr.Rect.Dy(),
+			dashcamTitleImageGray,
+			dashcamTitleImageAlpha,
+			0,
+			0,
+		)
+
+		// Assembled needed stuff in one step before send off
+		// to ffmpeg
+		rawFrame = append(rawFrame[:0], ycbcr.Y...)
+		rawFrame = append(rawFrame, ycbcr.Cb...)
+		rawFrame = append(rawFrame, ycbcr.Cr...)
+
+		err = encoder.WriteFrame(rawFrame)
 		if err != nil {
 			log.Printf("Could not write data to encoder: %v", err)
 			return

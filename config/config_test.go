@@ -18,6 +18,40 @@ func writeConfigFile(t *testing.T, contents string) string {
 	return path
 }
 
+func TestParseConfigPixelFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		field   string
+		want    string
+		wantErr bool
+	}{
+		{name: "missing defaults to MJPG", want: "MJPG"},
+		{name: "empty defaults to MJPG", field: `,"pixel_format":""`, want: "MJPG"},
+		{name: "explicit MJPG", field: `,"pixel_format":"MJPG"`, want: "MJPG"},
+		{name: "explicit YU12", field: `,"pixel_format":"YU12"`, want: "YU12"},
+		{name: "unsupported format", field: `,"pixel_format":"YUYV"`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30` + tt.field + `}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected unsupported pixel format error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.VideoConfig.PixelFormat != tt.want {
+				t.Errorf("PixelFormat = %q, want %q", cfg.VideoConfig.PixelFormat, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseConfigValid(t *testing.T) {
 	path := writeConfigFile(t, `{"dashcam_title":"Andreas Dashcam","video_config":{"video_source":"/dev/video4","width":1280,"height":720,"fps":30,"segmented":true,"segment_duration":"1.5s"}}`)
 	cfg, err := ParseConfig(path)

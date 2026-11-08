@@ -129,11 +129,20 @@ func main() {
 
 	log.Printf("Pixformat: %s", fourCC)
 
+	// To hold which format we request from camera
+	var requestedFourCC uint32
+	switch dashcamConfig.VideoConfig.PixelFormat {
+		case "MJPG":
+			requestedFourCC = v4l2.PixFmtMJPEG
+		case "YU12":
+			requestedFourCC = v4l2.PixFmtYUV420
+	}
+
 	requestedFormat, err := v4l2.SetVideoCaptureFormat(
 		device.Fd(),
 		dashcamConfig.VideoConfig.Width,
 		dashcamConfig.VideoConfig.Height,
-		v4l2.PixFmtMJPEG,
+		requestedFourCC,
 	)
 
 	if err != nil {

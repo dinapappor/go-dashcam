@@ -16,9 +16,10 @@ type VideoConfig struct {
 	VideoSource     string `json:"video_source"` // camera
 	Width           uint32 `json:"width"`
 	Height          uint32 `json:"height"`
-	FrameRate      uint32 `json:"fps"`
+	FrameRate       uint32 `json:"fps"`
 	Segmented       bool   `json:"segmented"`
 	SegmentDuration string `json:"segment_duration"`
+	PixelFormat     string `json:"pixel_format"`
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -60,6 +61,16 @@ func ParseConfig(path string) (Config, error) {
 		if segmentDuration <= 0 {
 			return Config{}, fmt.Errorf("Config.VideoConfig.SegmentDuration cannot be zero or negative")
 		}
+	}
+
+	switch config.VideoConfig.PixelFormat {
+		case "MJPG", "YU12":
+			// Automatically accept these formats
+		case "":
+			// Set to mjpeg
+			config.VideoConfig.PixelFormat = "MJPG"
+		default:
+			return Config{}, fmt.Errorf("Unrecognised PixelFormat")
 	}
 
 

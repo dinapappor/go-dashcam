@@ -970,7 +970,12 @@ func TestMapBufferSuccess(t *testing.T) {
         if err != nil {
                 t.Fatalf("Expected success, got %v", err)
         }
-        defer syscall.Munmap(data)
+
+	defer func() {
+		if err := unmapDevice(data); err != nil {
+			t.Errorf("Unable to unmap buffer: %v", err)
+		}
+	}()
 
         if len(data) != 4096 {
                 t.Fatalf("Expected 4096 bytes, got %d", len(data))

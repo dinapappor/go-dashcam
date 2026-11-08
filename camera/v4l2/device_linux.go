@@ -10,7 +10,7 @@ import (
 )
 
 type Device struct {
-	file      *os.File
+	fd        int
 	buffers   [][]byte
 	streaming bool
 }
@@ -21,20 +21,20 @@ type Frame struct {
 }
 
 func Open(path string) (*Device, error) {
-	f, err := os.OpenFile(
-		path,
-		os.O_RDWR|syscall.O_NONBLOCK,
-		0,
-	)
+	f, err := openDevice(path)
 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to open device %s: %w", path, err)
 	}
-	return &Device{file: f}, nil
+	return &Device{fd: f}, nil
 }
 
 // This is a method
 func (d *Device) Close() error {
+
+	if d.fd == -1 {
+		return os.ErrClosed
+	}
 
 	// Store all errors
 	var closeErr error
@@ -51,16 +51,19 @@ func (d *Device) Close() error {
 		if d.buffers[index] == nil {
 			continue
 		}
-		if err := syscall.Munmap(d.buffers[index]); err != nil {
+		if err := unmapDevice(d.buffers[index]); err != nil {
 			closeErr = errors.Join(closeErr, fmt.Errorf("unmap buffer %d: %w", index, err))
 		}
 		d.buffers[index] = nil
 	}
-	return errors.Join(closeErr, d.file.Close())
+
+	err := closeDevice(d.fd)
+	d.fd = -1
+	return errors.Join(closeErr, err)
 }
 
 func (d *Device) Fd() uintptr {
-	return d.file.Fd()
+	return uintptr(d.fd)
 }
 
 func (d *Device) SetupBuffers(count uint32) error {

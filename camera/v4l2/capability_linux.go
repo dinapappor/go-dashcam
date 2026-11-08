@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"syscall"
 	"unsafe"
 )
 
@@ -30,7 +29,7 @@ func ConvertByteToString(data []byte) (string, error) {
 }
 
 func HasCapability(capabilities uint32, flag uint32) bool {
-	return  capabilities&flag != 0
+	return capabilities&flag != 0
 }
 
 func DecodeFourCC(format uint32) string {
@@ -105,7 +104,6 @@ func ValidateFrameInterval(orig V4L2Fract, actual V4L2Fract) bool {
 		errors++
 	}
 
-
 	if errors > 0 {
 		log.Printf("FrameInterval validation failed")
 		return false
@@ -126,15 +124,15 @@ func FrameBytes(buffers [][]byte, index uint32, bytesUsed uint32) ([]byte, error
 	return buffers[index][:bytesUsed], nil
 }
 
-
-func QueryCapability(fd uintptr)  (V4L2Capability, error) {
+func QueryCapability(fd uintptr) (V4L2Capability, error) {
 	var deviceCapability V4L2Capability
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocQueryCap, uintptr(unsafe.Pointer(&deviceCapability)))
-	if errno != 0 {
+	err := ioctlDevice(fd, VidiocQueryCap, unsafe.Pointer(&deviceCapability))
+
+	if err != nil {
 		// Return Empty Struct because V4L2Capability is needed as
 		// return type
-		return V4L2Capability{}, fmt.Errorf("Unable to query device capabilities: %w", errno)
+		return V4L2Capability{}, fmt.Errorf("Unable to query device capabilities: %w", err)
 	}
 
 	return deviceCapability, nil
@@ -145,9 +143,9 @@ func QueryVideoCaptureFormat(fd uintptr) (V4L2Format, error) {
 	deviceFormat.Type = BufTypeVideoCapture
 
 	// query the ioctl for v4l2 device now
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocGFMT, uintptr(unsafe.Pointer(&deviceFormat)))
-	if errno != 0 {
-		return V4L2Format{}, fmt.Errorf("Unable to query for device format: %w", errno)
+	err := ioctlDevice(fd, VidiocGFMT, unsafe.Pointer(&deviceFormat))
+	if err != nil {
+		return V4L2Format{}, fmt.Errorf("Unable to query for device format: %w", err)
 	}
 	return deviceFormat, nil
 }
@@ -161,12 +159,12 @@ func SetVideoCaptureFormat(fd uintptr, width uint32, height uint32, fourcc uint3
 
 	origRequestedFormat := requestedFormat
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocSFMT, uintptr(unsafe.Pointer(&requestedFormat)))
-	if errno !=0 {
-		return V4L2Format{}, fmt.Errorf("Unable to set format. Got %w", errno)
+	err := ioctlDevice(fd, VidiocSFMT, unsafe.Pointer(&requestedFormat))
+	if err != nil {
+		return V4L2Format{}, fmt.Errorf("Unable to set format. Got %w", err)
 	}
 
-	if ! ValidateFormat(origRequestedFormat, requestedFormat) {
+	if !ValidateFormat(origRequestedFormat, requestedFormat) {
 		return V4L2Format{}, fmt.Errorf("Requested format and returned format did not match")
 	}
 
@@ -177,10 +175,10 @@ func QueryVideoCaptureStreamParams(fd uintptr) (V4L2StreamParm, error) {
 	var streamParams V4L2StreamParm
 	streamParams.Type = BufTypeVideoCapture
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocGPARM, uintptr(unsafe.Pointer(&streamParams)))
+	err := ioctlDevice(fd, VidiocGPARM, unsafe.Pointer(&streamParams))
 
-	if errno != 0 {
-		return V4L2StreamParm{}, fmt.Errorf("Unable to query streamparams, got %w", errno)
+	if err != nil {
+		return V4L2StreamParm{}, fmt.Errorf("Unable to query streamparams, got %w", err)
 	}
 	return streamParams, nil
 }
@@ -193,13 +191,13 @@ func SetVideoCaptureStreamParams(fd uintptr, numerator uint32, denominator uint3
 
 	origParams := requestedParams
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocSPARM, uintptr(unsafe.Pointer(&requestedParams)))
+	err := ioctlDevice(fd, VidiocSPARM, unsafe.Pointer(&requestedParams))
 
-	if errno != 0 {
-		return V4L2StreamParm{}, fmt.Errorf("Unable to set stream params, got %w", errno)
+	if err != nil {
+		return V4L2StreamParm{}, fmt.Errorf("Unable to set stream params, got %w", err)
 	}
 
-	if ! ValidateFrameInterval(origParams.Capture.TimePerFrame, requestedParams.Capture.TimePerFrame) {
+	if !ValidateFrameInterval(origParams.Capture.TimePerFrame, requestedParams.Capture.TimePerFrame) {
 		return V4L2StreamParm{}, fmt.Errorf("TimePerFrame validation failed")
 	}
 	return requestedParams, nil
@@ -212,10 +210,10 @@ func RequestMmapBuffers(fd uintptr, count uint32) (V4L2RequestBuffers, error) {
 	requestBuffers.Type = BufTypeVideoCapture
 	requestBuffers.Memory = MemoryMmap
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocReqBufs, uintptr(unsafe.Pointer(&requestBuffers)))
+	err := ioctlDevice(fd, VidiocReqBufs, unsafe.Pointer(&requestBuffers))
 
-	if errno != 0 {
-		return V4L2RequestBuffers{}, fmt.Errorf("Unable to allocate request buffers, got %w", errno)
+	if err != nil {
+		return V4L2RequestBuffers{}, fmt.Errorf("Unable to allocate request buffers, got %w", err)
 	}
 
 	if requestBuffers.Count == 0 {
@@ -229,22 +227,17 @@ func QueryBuffer(fd uintptr, index uint32) (V4L2Buffer, error) {
 	var buffer V4L2Buffer
 	buffer.Type = BufTypeVideoCapture
 	buffer.Index = index
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocQueryBuf, uintptr(unsafe.Pointer(&buffer)))
+	err := ioctlDevice(fd, VidiocQueryBuf, unsafe.Pointer(&buffer))
 
-	if errno != 0 {
-		return V4L2Buffer{}, fmt.Errorf("Unable to Query buffer, got %w", errno)
+	if err != nil {
+		return V4L2Buffer{}, fmt.Errorf("Unable to Query buffer, got %w", err)
 	}
 	return buffer, nil
 }
 
 func MapBuffer(fd uintptr, buffer V4L2Buffer) ([]byte, error) {
-	data, err := syscall.Mmap(
-		int(fd),
-		int64(buffer.M.Offset),
-		int(buffer.Length),
-		syscall.PROT_READ|syscall.PROT_WRITE,
-		syscall.MAP_SHARED,
-	)
+
+	data, err := mapDevice(int(fd), int64(buffer.M.Offset), int(buffer.Length))
 
 	if err != nil {
 		return nil, fmt.Errorf("Could not map buffer, got %w", err)
@@ -256,15 +249,10 @@ func QueueBuffer(fd uintptr, buffer V4L2Buffer) error {
 	buffer.Memory = MemoryMmap
 	buffer.Flags = 0
 
-	_, _, errno := syscall.Syscall(
-		syscall.SYS_IOCTL,
-		fd,
-		VidiocQBuf,
-		uintptr(unsafe.Pointer(&buffer)),
-	)
+	err := ioctlDevice(fd, VidiocQBuf, unsafe.Pointer(&buffer))
 
-	if errno != 0 {
-		return fmt.Errorf("Could not queue buffer %d: %w", buffer.Index, errno)
+	if err != nil {
+		return fmt.Errorf("Could not queue buffer %d: %w", buffer.Index, err)
 	}
 	return nil
 }
@@ -274,10 +262,10 @@ func DequeueBuffer(fd uintptr) (V4L2Buffer, error) {
 	completedBuffer.Type = BufTypeVideoCapture
 	completedBuffer.Memory = MemoryMmap
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocDQBuf, uintptr(unsafe.Pointer(&completedBuffer)))
+	err := ioctlDevice(fd, VidiocDQBuf, unsafe.Pointer(&completedBuffer))
 
-	if errno != 0 {
-		return V4L2Buffer{}, fmt.Errorf("Errno: %w", errno)
+	if err != nil {
+		return V4L2Buffer{}, fmt.Errorf("Errno: %w", err)
 	}
 
 	return completedBuffer, nil
@@ -285,20 +273,20 @@ func DequeueBuffer(fd uintptr) (V4L2Buffer, error) {
 
 func StreamOn(fd uintptr) error {
 	bufferType := uint32(BufTypeVideoCapture)
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocStreamOn, uintptr(unsafe.Pointer(&bufferType)))
+	err := ioctlDevice(fd, VidiocStreamOn, unsafe.Pointer(&bufferType))
 
-	if errno != 0 {
-		return fmt.Errorf("Unable to set stream on: %w", errno)
+	if err != nil {
+		return fmt.Errorf("Unable to set stream on: %w", err)
 	}
 	return nil
 }
 
 func StreamOff(fd uintptr) error {
 	bufferType := uint32(BufTypeVideoCapture)
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, VidiocStreamOff, uintptr(unsafe.Pointer(&bufferType)))
+	err := ioctlDevice(fd, VidiocStreamOff, unsafe.Pointer(&bufferType))
 
-	if errno != 0 {
-		return fmt.Errorf("Unable to set stream off: %w", errno)
+	if err != nil {
+		return fmt.Errorf("Unable to set stream off: %w", err)
 	}
 	return nil
 }

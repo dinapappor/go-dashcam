@@ -7,7 +7,24 @@ A Go learning project for a dashcam. Captures camera frames through direct Linux
 Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera supporting MJPEG at 1280×720 and 30 fps.
 
 ```sh
-go run ./cmd/dashcam -video_device /dev/video0 -output recording.mp4
+go run ./cmd/dashcam
+```
+
+## Current config file format
+
+Subject to change - for instance if we have multiple cameras in the future.
+```json
+{
+    "dashcam_title": "Andreas Dashcam",
+    "video_config": {
+        "video_source": "/dev/video4",
+        "width": 1280,
+        "height": 720,
+        "fps": 30,
+        "segmented": true,
+        "segment_duration": "10s"
+    }
+}
 ```
 
 Currently stops after 300 frames or Ctrl+C. Existing output files are not overwritten. Device paths may change between connections.
@@ -65,7 +82,7 @@ encoder so it can support both decoded MJPEG and packed YUYV frames.
 ## Milestones
 
 - [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.
-- [ ] Add a configurable title overlay.
+- [x] Add a configurable title overlay.
 - [x] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
 - [ ] Read and validate GPS location and speed.
 - [ ] Add GPS overlays.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -19,6 +20,20 @@ import (
 )
 
 func main() {
+	cpuProfile := flag.String("cpuprofile", "", "write a CPU profile to this file")
+	flag.Parse()
+	if *cpuProfile != "" {
+		stopProfile, err := startCPUProfile(*cpuProfile)
+		if err != nil {
+			log.Printf("Unable to start CPU profile: %v", err)
+			return
+		}
+		defer func() {
+			if err := stopProfile(); err != nil {
+				log.Printf("Unable to close CPU profile: %v", err)
+			}
+		}()
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

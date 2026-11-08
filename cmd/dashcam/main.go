@@ -161,7 +161,7 @@ func main() {
 		return
 	}
 
-	requestedParams, err := v4l2.SetVideoCaptureStreamParams(device.Fd(), 1, dashcamConfig.VideoConfig.FramesPerSecond)
+	requestedParams, err := v4l2.SetVideoCaptureStreamParams(device.Fd(), 1, dashcamConfig.VideoConfig.FrameRate)
 
 	if err != nil {
 		log.Printf("Unable to set stream params, got %s", err)
@@ -188,7 +188,7 @@ func main() {
 		Mode:            mode,
 		SegmentDuration: segmentDuration,
 		OutputDirectory: "videos",
-		FrameRate:       dashcamConfig.VideoConfig.FramesPerSecond,
+		FrameRate:       dashcamConfig.VideoConfig.FrameRate,
 	}
 
 	outputArgs, err := recording.OutputArgs(recordingConfig, time.Now())
@@ -197,11 +197,23 @@ func main() {
 		return
 	}
 
+	inputConfig := video.InputConfig{
+		Width: dashcamConfig.VideoConfig.Width,
+		Height: dashcamConfig.VideoConfig.Height,
+		FrameRate: dashcamConfig.VideoConfig.FrameRate,
+		PixelFormat: video.YUV422,
+	}
+
+	inputArgs, err := video.InputArgs(inputConfig)
+
+	if err != nil {
+		log.Printf("InputArgs: %v", err)
+		return
+	}
+
+
 	outputArgs = append([]string{"-c:v", "libx264", "-pix_fmt", "yuv420p"}, outputArgs...)
-	encoder, err := video.NewEncoder(
-		[]string{"-f", "rawvideo", "-pix_fmt", "yuvj422p", "-video_size", "1280x720", "-framerate", fmt.Sprint(dashcamConfig.VideoConfig.FramesPerSecond)},
-		outputArgs,
-	)
+	encoder, err := video.NewEncoder(inputArgs, outputArgs)
 
 	if err != nil {
 		log.Printf("Unable to start encoder: %v", err)
@@ -281,6 +293,13 @@ func main() {
 			continue
 		}
 
+		err = video.ValidateSubsampleRatio(ycbcr, inputConfig.PixelFormat)
+
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
 		overlay.BlendTitle(
 			ycbcr.Y,
 			ycbcr.YStride,
@@ -294,9 +313,13 @@ func main() {
 
 		// Assembled needed stuff in one step before send off
 		// to ffmpeg
-		rawFrame = append(rawFrame[:0], ycbcr.Y...)
-		rawFrame = append(rawFrame, ycbcr.Cb...)
-		rawFrame = append(rawFrame, ycbcr.Cr...)
+
+		rawFrame, err = video.PackFrame(rawFrame, ycbcr)
+
+		if err != nil {
+			log.Printf("Could not pack frame: %v", err)
+			return
+		}
 
 		err = encoder.WriteFrame(rawFrame)
 		if err != nil {

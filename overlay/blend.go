@@ -27,8 +27,9 @@ func BlendTitle(y []byte, stride int, width int, height int, gray *image.Gray, a
 			}
 			frameIndex := frameY*stride + frameX
 			titleIndex := row*gray.Stride + col
+			alphaIndex := row*alpha.Stride + col
 
-			y[frameIndex] = blendPixel(y[frameIndex], gray.Pix[titleIndex], alpha.Pix[titleIndex])
+			y[frameIndex] = blendPixel(y[frameIndex], gray.Pix[titleIndex], alpha.Pix[alphaIndex])
 		}
 	}
 }

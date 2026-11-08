@@ -34,6 +34,9 @@ const PixFmtMJPEG = 0x47504A4D
 // Each pair of pixels stores Y0, U, Y1, V, sharing the U and V colour samples.
 const PixFmtYUYV = 0x56595559
 
+// PixFmtYUV420 is 'YU12': planar Y, Cb, Cr with 4:2:0 subsampling
+const PixFmtYUV420 =  0x32315559
+
 // VidiocGPARM reads stream parameters, including the frame interval and its capabilities.
 const VidiocGPARM = 0xC0CC5615
 

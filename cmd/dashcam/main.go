@@ -155,6 +155,7 @@ func main() {
 		requestedFormat.PixFormat.Width,
 		requestedFormat.PixFormat.Height)
 
+	log.Printf("%+v", requestedFormat)
 	streamParams, err := v4l2.QueryVideoCaptureStreamParams(device.Fd())
 	if err != nil {
 		log.Printf("Unable to query for stream params, got: %s", err)
@@ -206,11 +207,17 @@ func main() {
 		return
 	}
 
+	inputPixelFormat := video.YUV422
+
+	if dashcamConfig.VideoConfig.PixelFormat == "YU12" {
+		inputPixelFormat = video.YUV420
+	}
+
 	inputConfig := video.InputConfig{
 		Width: dashcamConfig.VideoConfig.Width,
 		Height: dashcamConfig.VideoConfig.Height,
 		FrameRate: dashcamConfig.VideoConfig.FrameRate,
-		PixelFormat: video.YUV422,
+		PixelFormat: inputPixelFormat,
 	}
 
 	inputArgs, err := video.InputArgs(inputConfig)
@@ -221,7 +228,8 @@ func main() {
 	}
 
 
-	outputArgs = append([]string{"-c:v", "libx264", "-pix_fmt", "yuv420p"}, outputArgs...)
+	// Find a way to  make the pi use h264_v4l2m2m on pi3/pi4/pizero2w
+	outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
 	encoder, err := video.NewEncoder(inputArgs, outputArgs)
 
 	if err != nil {
@@ -273,33 +281,67 @@ func main() {
 			return
 		}
 
+	        var ycbcr *image.YCbCr
 		// decode the image so we can draw title overlay over it
-		decoded, err := jpeg.Decode(bytes.NewReader(frame.Data))
+		if dashcamConfig.VideoConfig.PixelFormat == "YU12" {
+			width := int(requestedFormat.PixFormat.Width)
+                        height := int(requestedFormat.PixFormat.Height)
+                        yStride := int(requestedFormat.PixFormat.Bytesperline)
+                        cStride := yStride / 2
+                        ySize := yStride * height
+                        cSize := cStride * ((height + 1) / 2)
 
-		if err != nil {
-			log.Printf("Unable to decode jpeg: %v", err)
-			err = device.Requeue(frame)
+                        if len(frame.Data) < ySize+2*cSize {
+                                log.Printf("YU12 frame too short: got %d bytes, want %d", len(frame.Data), ySize+2*cSize)
+                                err = device.Requeue(frame)
+                                if err != nil {
+                                        log.Printf("Could not requeue the buffer: %v", err)
+                                        return
+                                }
+
+                                continue
+                        }
+
+                        ycbcr = &image.YCbCr{
+                                Y:              frame.Data[:ySize],
+                                Cb:             frame.Data[ySize : ySize+cSize],
+                                Cr:             frame.Data[ySize+cSize : ySize+2*cSize],
+                                YStride:        yStride,
+                                CStride:        cStride,
+                                SubsampleRatio: image.YCbCrSubsampleRatio420,
+                                Rect:           image.Rect(0, 0, width, height),
+                        }
+		} else {
+			// Assume mjpeg for now
+			decoded, err := jpeg.Decode(bytes.NewReader(frame.Data))
+
 			if err != nil {
-				log.Printf("Could not requeue the buffer: %v", err)
-				return
+				log.Printf("Unable to decode jpeg: %v", err)
+				err = device.Requeue(frame)
+				if err != nil {
+					log.Printf("Could not requeue the buffer: %v", err)
+					return
+				}
+
+				continue
 			}
 
-			continue
-		}
+			var ok bool
 
-		ycbcr, ok := decoded.(*image.YCbCr)
+			ycbcr, ok = decoded.(*image.YCbCr)
 
-		if !ok {
-			log.Printf("Unexpexted image type %T", decoded)
+			if !ok {
+				log.Printf("Unexpexted image type %T", decoded)
 
-			// Requeue the buffer again
-			err = device.Requeue(frame)
-			if err != nil {
-				log.Printf("Could not requeue the buffer: %v", err)
-				return
+				// Requeue the buffer again
+				err = device.Requeue(frame)
+				if err != nil {
+					log.Printf("Could not requeue the buffer: %v", err)
+					return
+				}
+
+				continue
 			}
-
-			continue
 		}
 
 		err = video.ValidateSubsampleRatio(ycbcr, inputConfig.PixelFormat)

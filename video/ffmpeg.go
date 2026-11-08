@@ -87,7 +87,7 @@ func (e *Encoder) Close() error {
 func (e *Encoder) WriteFrame(data []byte) error {
 	// if we fail to return within 2 seconds that
 	// probably means ffmpeg stalled
-	err := e.pipe.SetWriteDeadline(time.Now().Add(2 * time.Second))
+	err := e.pipe.SetWriteDeadline(time.Now().Add(10 * time.Second))
 
 	if err != nil {
 		return fmt.Errorf("Unable to set write deadline: %w", err)

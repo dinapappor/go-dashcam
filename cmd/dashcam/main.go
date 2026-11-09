@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
@@ -12,8 +10,6 @@ import (
 	"github.com/dinapappor/go-dashcam/recording"
 	"github.com/dinapappor/go-dashcam/video"
 	"github.com/dinapappor/go-dashcam/video/v4l2m2m"
-	"image"
-	"image/jpeg"
 	"log"
 	"os"
 	"os/signal"
@@ -350,119 +346,17 @@ func main() {
 		return
 	}
 
-	// Used for the decoded image
-	var rawFrame []byte
-
-	for ctx.Err() == nil {
-		// Get frames
-		frame, err := device.NextFrame(ctx)
-
-		if errors.Is(err, context.Canceled) {
-			log.Printf("Shutting down")
-			return
-		}
-
-		if err != nil {
-			log.Printf("Unable to get frame. Got %+v", err)
-			return
-		}
-
-		var ycbcr *image.YCbCr
-		// decode the image so we can draw title overlay over it
-		if dashcamConfig.VideoConfig.PixelFormat == "YU12" {
-			width := int(requestedFormat.PixFormat.Width)
-			height := int(requestedFormat.PixFormat.Height)
-			yStride := int(requestedFormat.PixFormat.Bytesperline)
-			cStride := yStride / 2
-			ySize := yStride * height
-			cSize := cStride * ((height + 1) / 2)
-
-			if len(frame.Data) < ySize+2*cSize {
-				log.Printf("YU12 frame too short: got %d bytes, want %d", len(frame.Data), ySize+2*cSize)
-				err = device.Requeue(frame)
-				if err != nil {
-					log.Printf("Could not requeue the buffer: %v", err)
-					return
-				}
-
-				continue
-			}
-
-			ycbcr = &image.YCbCr{
-				Y:              frame.Data[:ySize],
-				Cb:             frame.Data[ySize : ySize+cSize],
-				Cr:             frame.Data[ySize+cSize : ySize+2*cSize],
-				YStride:        yStride,
-				CStride:        cStride,
-				SubsampleRatio: image.YCbCrSubsampleRatio420,
-				Rect:           image.Rect(0, 0, width, height),
-			}
-		} else {
-			// Assume mjpeg for now
-			decoded, err := jpeg.Decode(bytes.NewReader(frame.Data))
-
-			if err != nil {
-				log.Printf("Unable to decode jpeg: %v", err)
-				err = device.Requeue(frame)
-				if err != nil {
-					log.Printf("Could not requeue the buffer: %v", err)
-					return
-				}
-
-				continue
-			}
-
-			var ok bool
-
-			ycbcr, ok = decoded.(*image.YCbCr)
-
-			if !ok {
-				log.Printf("Unexpexted image type %T", decoded)
-
-				// Requeue the buffer again
-				err = device.Requeue(frame)
-				if err != nil {
-					log.Printf("Could not requeue the buffer: %v", err)
-					return
-				}
-
-				continue
-			}
-		}
-
-		err = video.ValidateSubsampleRatio(ycbcr, inputConfig.PixelFormat)
-
-		if err != nil {
-			log.Print(err)
-			return
-		}
-
-		overlay.BlendTitle(
-			ycbcr.Y,
-			ycbcr.YStride,
-			ycbcr.Rect.Dx(),
-			ycbcr.Rect.Dy(),
-			dashcamTitleImageGray,
-			dashcamTitleImageAlpha,
-			0,
-			0,
-		)
-
-		rawFrame, err = video.PackFrame(rawFrame, ycbcr)
-		if err != nil {
-			log.Printf("Could not pack frame: %v", err)
-			return
-		}
-
-		err = encoder.WriteFrame(rawFrame)
-		if err != nil {
-			log.Printf("Could not write data to encoder: %v", err)
-			return
-		}
-		err = device.Requeue(frame)
-		if err != nil {
-			log.Printf("Could not requeue the buffer: %v", err)
-			return
-		}
+	err = recordSoftware(
+		ctx,
+		device,
+		encoder,
+		requestedFormat,
+		dashcamConfig.VideoConfig.PixelFormat,
+		inputConfig.PixelFormat,
+		dashcamTitleImageGray,
+		dashcamTitleImageAlpha,
+	)
+	if err != nil {
+		log.Printf("Recording failed: %v", err)
 	}
 }

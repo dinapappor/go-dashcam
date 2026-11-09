@@ -375,7 +375,7 @@ func main() {
 		height := int(requestedFormat.PixFormat.Height)
 		const rw = v4l2.DmaBufSyncRead | v4l2.DmaBufSyncWrite
 
-		for frameNumber := 0; frameNumber < 900 && ctx.Err() == nil; {
+		for ctx.Err() == nil {
 			err := pump()
 			if err != nil {
 				log.Printf("Hardware encoder: %v", err)
@@ -426,7 +426,6 @@ func main() {
 			held[index] = frame
 			inFlight[index] = true
 			inFlightCount++
-			frameNumber++
 		}
 
 		deadline := time.Now().Add(2 * time.Second)
@@ -454,7 +453,7 @@ func main() {
 	// Used for the decoded image
 	var rawFrame []byte
 
-	for frameNumber := 0; frameNumber < 900 && ctx.Err() == nil; {
+	for ctx.Err() == nil {
 		// Get frames
 		frame, err := device.NextFrame(ctx)
 
@@ -565,6 +564,5 @@ func main() {
 			log.Printf("Could not requeue the buffer: %v", err)
 			return
 		}
-		frameNumber++
 	}
 }

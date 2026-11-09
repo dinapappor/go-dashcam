@@ -338,24 +338,19 @@ func main() {
 			dashcamTitleImageGray,
 			dashcamTitleImageAlpha,
 		)
-
-		if err != nil {
-			log.Printf("Recording failed: %v", err)
-		}
-
-		return
+	} else {
+		err = recordSoftware(
+			ctx,
+			device,
+			encoder,
+			requestedFormat,
+			dashcamConfig.VideoConfig.PixelFormat,
+			inputConfig.PixelFormat,
+			dashcamTitleImageGray,
+			dashcamTitleImageAlpha,
+		)
 	}
 
-	err = recordSoftware(
-		ctx,
-		device,
-		encoder,
-		requestedFormat,
-		dashcamConfig.VideoConfig.PixelFormat,
-		inputConfig.PixelFormat,
-		dashcamTitleImageGray,
-		dashcamTitleImageAlpha,
-	)
 	if err != nil {
 		log.Printf("Recording failed: %v", err)
 	}

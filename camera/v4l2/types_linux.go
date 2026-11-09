@@ -3,6 +3,7 @@ package v4l2
 import (
 	"syscall"
 )
+
 type V4L2Capability struct {
 	Driver       [16]byte  // Driver name, stored as NUL-terminated bytes.
 	Card         [32]byte  // Human-readable device name, stored as NUL-terminated bytes.
@@ -12,7 +13,6 @@ type V4L2Capability struct {
 	DeviceCaps   uint32    // Flags for this node; valid when Capabilities includes V4L2_CAP_DEVICE_CAPS.
 	Reserved     [3]uint32 // Reserved for future extensions; required for the kernel ABI.
 }
-
 
 type V4L2PixFormat struct {
 	Width        uint32
@@ -38,7 +38,7 @@ type V4L2Format struct {
 }
 
 type V4L2Fract struct {
-	Numerator uint32
+	Numerator   uint32
 	Denominator uint32
 }
 
@@ -77,24 +77,24 @@ type V4L2Timecode struct {
 }
 
 type V4L2Buffer struct {
-	Index      uint32
-	Type       uint32
-	BytesUsed  uint32
-	Flags      uint32
-	Field      uint32
-	TimeStamp  syscall.Timeval
-	Timecode   V4L2Timecode
-	Sequence   uint32
-	Memory     uint32
-	M          V4L2BufferMemory
-	Length     uint32
-	Reserved2  uint32
-	Reserved   uint32
+	Index     uint32
+	Type      uint32
+	BytesUsed uint32
+	Flags     uint32
+	Field     uint32
+	TimeStamp syscall.Timeval
+	Timecode  V4L2Timecode
+	Sequence  uint32
+	Memory    uint32
+	M         V4L2BufferMemory
+	Length    uint32
+	Reserved2 uint32
+	Reserved  uint32
 }
 
 type V4L2BufferMemory struct {
-	_          [0]uint64
-	Offset     uint32
+	_         [0]uint64
+	Offset    uint32
 	Remaining [4]byte
 }
 

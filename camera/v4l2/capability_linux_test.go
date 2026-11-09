@@ -1,11 +1,11 @@
 package v4l2
 
 import (
-	"os"
 	"errors"
+	"os"
+	"syscall"
 	"testing"
 	"unsafe"
-	"syscall"
 )
 
 func TestV4L2CapabilitySize(t *testing.T) {
@@ -51,29 +51,29 @@ func TestV4L2CapabilityReservedOffset(t *testing.T) {
 }
 
 func TestSelectCapabilitiesUsesDeviceCaps(t *testing.T) {
-        caps := V4L2Capability{
-                Capabilities: CapDeviceCaps,
-                DeviceCaps:   VideoCapture,
-        }
+	caps := V4L2Capability{
+		Capabilities: CapDeviceCaps,
+		DeviceCaps:   VideoCapture,
+	}
 
-        got := SelectCapabilities(caps)
+	got := SelectCapabilities(caps)
 
-        if got != VideoCapture {
-                t.Errorf("got %#x, want %#x", got, VideoCapture)
-        }
+	if got != VideoCapture {
+		t.Errorf("got %#x, want %#x", got, VideoCapture)
+	}
 }
 
 func TestSelectCapabilitiesUsesCapabilities(t *testing.T) {
-        caps := V4L2Capability{
-                Capabilities: VideoCapture,
-                DeviceCaps:   0,
-        }
+	caps := V4L2Capability{
+		Capabilities: VideoCapture,
+		DeviceCaps:   0,
+	}
 
-        got := SelectCapabilities(caps)
+	got := SelectCapabilities(caps)
 
-        if got != VideoCapture {
-                t.Errorf("got %#x, want %#x", got, VideoCapture)
-        }
+	if got != VideoCapture {
+		t.Errorf("got %#x, want %#x", got, VideoCapture)
+	}
 }
 
 // test the vidicQueryCap const that is defined in main
@@ -159,7 +159,6 @@ func TestHasCaptureCapabilityAbsent(t *testing.T) {
 	}
 }
 
-
 func TestV4L2PixFormatSize(t *testing.T) {
 	got := unsafe.Sizeof(V4L2PixFormat{})
 
@@ -209,7 +208,7 @@ func TestV4L2FormatAlignment(t *testing.T) {
 }
 
 func TestDecodeFourCCMJPG(t *testing.T) {
-	format:= DecodeFourCC(0x47504A4D)
+	format := DecodeFourCC(0x47504A4D)
 
 	if format != "MJPG" {
 		t.Errorf("Expected format to be MJPG, got:%s", format)
@@ -217,7 +216,7 @@ func TestDecodeFourCCMJPG(t *testing.T) {
 }
 
 func TestDecodeFourCCYUYV(t *testing.T) {
-	format:= DecodeFourCC(0x56595559)
+	format := DecodeFourCC(0x56595559)
 
 	if format != "YUYV" {
 		t.Errorf("Expected format to be YUYV, got:%s", format)
@@ -225,13 +224,12 @@ func TestDecodeFourCCYUYV(t *testing.T) {
 }
 
 func TestDecodeFourCCPreservesBytes(t *testing.T) {
-	format:= DecodeFourCC(0x80434241)
+	format := DecodeFourCC(0x80434241)
 
 	if format != "ABC\x80" {
 		t.Errorf("Expected %q, got:%q", "ABC\x80", format)
 	}
 }
-
 
 func TestVIDIOCGFMT(t *testing.T) {
 	got := VidiocGFMT
@@ -260,7 +258,7 @@ func TestValidateFormatCorrect(t *testing.T) {
 	actual.PixFormat.Width = 1280
 	actual.PixFormat.Height = 720
 
-	if ! ValidateFormat(orig, actual) {
+	if !ValidateFormat(orig, actual) {
 		t.Errorf("Structs should match")
 	}
 }
@@ -363,7 +361,6 @@ func TestV4L2StreamParmAlignment(t *testing.T) {
 	}
 }
 
-
 func TestVIDIOCGPARM(t *testing.T) {
 	got := VidiocGPARM
 
@@ -372,7 +369,7 @@ func TestVIDIOCGPARM(t *testing.T) {
 	}
 }
 
-func TestValidateFrameIntervalCorrect(t *testing.T ) {
+func TestValidateFrameIntervalCorrect(t *testing.T) {
 	var orig V4L2Fract
 	orig.Numerator = 1
 	orig.Denominator = 30
@@ -381,7 +378,7 @@ func TestValidateFrameIntervalCorrect(t *testing.T ) {
 	actual.Numerator = 1
 	actual.Denominator = 30
 
-	if ! ValidateFrameInterval(orig, actual) {
+	if !ValidateFrameInterval(orig, actual) {
 		t.Errorf("These should match")
 	}
 }
@@ -395,7 +392,7 @@ func TestValidateFrameIntervalDoubleFraction(t *testing.T) {
 	actual.Numerator = 2
 	actual.Denominator = 60
 
-	if ! ValidateFrameInterval(orig, actual) {
+	if !ValidateFrameInterval(orig, actual) {
 		t.Errorf("These should match")
 	}
 }
@@ -656,7 +653,6 @@ func TestFrameExactBufferLength(t *testing.T) {
 
 	got, err := FrameBytes(buffers, 1, 3)
 
-
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -697,7 +693,7 @@ func TestQueryCapabilityNotV4L2Device(t *testing.T) {
 
 	_, err = QueryCapability(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -714,7 +710,7 @@ func TestQueryCapabilityInvalidFD(t *testing.T) {
 
 	_, err = QueryCapability(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -730,7 +726,7 @@ func TestQueryVideoCaptureFormatNotV4L2Device(t *testing.T) {
 
 	_, err = QueryVideoCaptureFormat(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -747,7 +743,7 @@ func TestQueryVideoCaptureFormatInvalidFD(t *testing.T) {
 
 	_, err = QueryVideoCaptureFormat(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -763,7 +759,7 @@ func TestSetVideoCaptureFormatNotV4L2Device(t *testing.T) {
 
 	_, err = SetVideoCaptureFormat(file.Fd(), 1280, 720, PixFmtMJPEG)
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -780,7 +776,7 @@ func TestSetVideoCaptureFormatInvalidFD(t *testing.T) {
 
 	_, err = SetVideoCaptureFormat(fd, 1280, 720, PixFmtMJPEG)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -796,7 +792,7 @@ func TestQueryVideoCaptureStreamParamsNotV4L2Device(t *testing.T) {
 
 	_, err = QueryVideoCaptureStreamParams(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -813,7 +809,7 @@ func TestQueryVideoCaptureStreamParamsInvalidFD(t *testing.T) {
 
 	_, err = QueryVideoCaptureStreamParams(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -829,7 +825,7 @@ func TestSetVideoCaptureStreamParamsNotV4L2Device(t *testing.T) {
 
 	_, err = SetVideoCaptureStreamParams(file.Fd(), 1, 30)
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -846,7 +842,7 @@ func TestSetVideoCaptureStreamParamsInvalidFD(t *testing.T) {
 
 	_, err = SetVideoCaptureStreamParams(fd, 1, 30)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -862,7 +858,7 @@ func TestRequestMmapBuffersNotV4L2Device(t *testing.T) {
 
 	_, err = RequestMmapBuffers(file.Fd(), 4)
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -879,7 +875,7 @@ func TestRequestMmapBuffersInvalidFD(t *testing.T) {
 
 	_, err = RequestMmapBuffers(fd, 4)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -895,7 +891,7 @@ func TestQueryBufferNotV4L2Device(t *testing.T) {
 
 	_, err = QueryBuffer(file.Fd(), 1)
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -912,64 +908,64 @@ func TestQueryBufferInvalidFD(t *testing.T) {
 
 	_, err = QueryBuffer(fd, 1)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
 
 func TestMapBufferInvalidFD(t *testing.T) {
-        file, err := os.CreateTemp(t.TempDir(), "fake")
-        if err != nil {
-                t.Fatalf("Unable to open temporary file: %v", err)
-        }
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
 
-        fd := file.Fd()
-        file.Close()
+	fd := file.Fd()
+	file.Close()
 
-        var buffer V4L2Buffer
-        buffer.Length = 4096
+	var buffer V4L2Buffer
+	buffer.Length = 4096
 
-        _, err = MapBuffer(fd, buffer)
+	_, err = MapBuffer(fd, buffer)
 
-        if !errors.Is(err, syscall.EBADF) {
-                t.Fatalf("Expected EBADF, got %v", err)
-        }
+	if !errors.Is(err, syscall.EBADF) {
+		t.Fatalf("Expected EBADF, got %v", err)
+	}
 }
 
 func TestMapBufferZeroLength(t *testing.T) {
-        file, err := os.CreateTemp(t.TempDir(), "fake")
-        if err != nil {
-                t.Fatalf("Unable to open temporary file: %v", err)
-        }
-        defer file.Close()
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	defer file.Close()
 
-        var buffer V4L2Buffer
+	var buffer V4L2Buffer
 
-        _, err = MapBuffer(file.Fd(), buffer)
+	_, err = MapBuffer(file.Fd(), buffer)
 
-        if !errors.Is(err, syscall.EINVAL) {
-                t.Fatalf("Expected EINVAL, got %v", err)
-        }
+	if !errors.Is(err, syscall.EINVAL) {
+		t.Fatalf("Expected EINVAL, got %v", err)
+	}
 }
 
 func TestMapBufferSuccess(t *testing.T) {
-        file, err := os.CreateTemp(t.TempDir(), "fake")
-        if err != nil {
-                t.Fatalf("Unable to open temporary file: %v", err)
-        }
-        defer file.Close()
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	defer file.Close()
 
-        if err := file.Truncate(4096); err != nil {
-                t.Fatalf("Unable to resize temporary file: %v", err)
-        }
+	if err := file.Truncate(4096); err != nil {
+		t.Fatalf("Unable to resize temporary file: %v", err)
+	}
 
-        var buffer V4L2Buffer
-        buffer.Length = 4096
+	var buffer V4L2Buffer
+	buffer.Length = 4096
 
-        data, err := MapBuffer(file.Fd(), buffer)
-        if err != nil {
-                t.Fatalf("Expected success, got %v", err)
-        }
+	data, err := MapBuffer(file.Fd(), buffer)
+	if err != nil {
+		t.Fatalf("Expected success, got %v", err)
+	}
 
 	defer func() {
 		if err := unmapDevice(data); err != nil {
@@ -977,11 +973,10 @@ func TestMapBufferSuccess(t *testing.T) {
 		}
 	}()
 
-        if len(data) != 4096 {
-                t.Fatalf("Expected 4096 bytes, got %d", len(data))
-        }
+	if len(data) != 4096 {
+		t.Fatalf("Expected 4096 bytes, got %d", len(data))
+	}
 }
-
 
 func TestQueueBufferNotV4L2Device(t *testing.T) {
 	testBuf := V4L2Buffer{}
@@ -995,7 +990,7 @@ func TestQueueBufferNotV4L2Device(t *testing.T) {
 
 	err = QueueBuffer(file.Fd(), testBuf)
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -1013,7 +1008,7 @@ func TestQueueBufferInvalidFD(t *testing.T) {
 
 	err = QueueBuffer(fd, testBuf)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -1029,7 +1024,7 @@ func TestDequeueBufferNotV4L2Device(t *testing.T) {
 
 	_, err = DequeueBuffer(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -1046,7 +1041,7 @@ func TestDequeueBufferInvalidFD(t *testing.T) {
 
 	_, err = DequeueBuffer(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -1062,7 +1057,7 @@ func TestStreamOnNotV4L2Device(t *testing.T) {
 
 	err = StreamOn(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -1079,7 +1074,7 @@ func TestStreamOnInvalidFD(t *testing.T) {
 
 	err = StreamOn(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
@@ -1095,7 +1090,7 @@ func TestStreamOffNotV4L2Device(t *testing.T) {
 
 	err = StreamOff(file.Fd())
 
-	if ! errors.Is(err, syscall.ENOTTY) {
+	if !errors.Is(err, syscall.ENOTTY) {
 		t.Fatalf("This should fail with inappropriate ioctl")
 	}
 }
@@ -1112,7 +1107,7 @@ func TestStreamOffInvalidFD(t *testing.T) {
 
 	err = StreamOff(fd)
 
-	if ! errors.Is(err, syscall.EBADF) {
+	if !errors.Is(err, syscall.EBADF) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }

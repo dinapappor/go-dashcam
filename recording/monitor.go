@@ -1,9 +1,9 @@
 package recording
 
 import (
+	"context"
 	"fmt"
 	"time"
-	"context"
 )
 
 // Should be configurable in the future
@@ -30,10 +30,10 @@ func Monitor(ctx context.Context, path string, interval time.Duration) error {
 			return fmt.Errorf("Could not run cleanup: %w", err)
 		}
 		select {
-			case <-ticker.C:
-				continue
-			case <-ctx.Done():
-				return nil
+		case <-ticker.C:
+			continue
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }

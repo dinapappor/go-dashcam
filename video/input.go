@@ -9,9 +9,8 @@ type PixelFormat int
 
 const (
 	YUV422 PixelFormat = iota // yuvj422p, for mjpeg mode
-	YUV420 // yuv420p - for when we go YUV mode
+	YUV420                    // yuv420p - for when we go YUV mode
 )
-
 
 type InputConfig struct {
 	Width       uint32
@@ -37,12 +36,12 @@ func InputArgs(cfg InputConfig) ([]string, error) {
 	inputArgs := []string{"-f", "rawvideo", "-pix_fmt"}
 
 	switch cfg.PixelFormat {
-		case YUV422:
-			inputArgs = append(inputArgs, "yuvj422p")
-		case YUV420:
-			inputArgs = append(inputArgs, "yuv420p")
-		default:
-			return nil, fmt.Errorf("Unknown pixelformat")
+	case YUV422:
+		inputArgs = append(inputArgs, "yuvj422p")
+	case YUV420:
+		inputArgs = append(inputArgs, "yuv420p")
+	default:
+		return nil, fmt.Errorf("Unknown pixelformat")
 	}
 
 	inputArgs = append(
@@ -70,18 +69,18 @@ func ValidateSubsampleRatio(ycbcr *image.YCbCr, expected PixelFormat) error {
 	// instead of panicing and die
 
 	switch expected {
-		case YUV422:
-			if ycbcr.SubsampleRatio != image.YCbCrSubsampleRatio422 {
-				return fmt.Errorf("Expected 422, got %T", ycbcr.SubsampleRatio)
-			}
-			return nil
-		case YUV420:
-			if ycbcr.SubsampleRatio != image.YCbCrSubsampleRatio420 {
-				return fmt.Errorf("Expected 420, got %T", ycbcr.SubsampleRatio)
-			}
-			return nil
-		default:
-			return fmt.Errorf("non-supported pixelformat")
+	case YUV422:
+		if ycbcr.SubsampleRatio != image.YCbCrSubsampleRatio422 {
+			return fmt.Errorf("Expected 422, got %T", ycbcr.SubsampleRatio)
+		}
+		return nil
+	case YUV420:
+		if ycbcr.SubsampleRatio != image.YCbCrSubsampleRatio420 {
+			return fmt.Errorf("Expected 420, got %T", ycbcr.SubsampleRatio)
+		}
+		return nil
+	default:
+		return fmt.Errorf("non-supported pixelformat")
 	}
 }
 
@@ -111,12 +110,12 @@ func PackFrame(dst []byte, frame *image.YCbCr) ([]byte, error) {
 	chromaHeight := height
 
 	switch frame.SubsampleRatio {
-		case image.YCbCrSubsampleRatio422:
-			// Colour has the same number of rows as brightness.
-		case image.YCbCrSubsampleRatio420:
-			chromaHeight = (height + 1) / 2
-		default:
-			return nil, fmt.Errorf("unsupported subsample ratio: %v", frame.SubsampleRatio)
+	case image.YCbCrSubsampleRatio422:
+		// Colour has the same number of rows as brightness.
+	case image.YCbCrSubsampleRatio420:
+		chromaHeight = (height + 1) / 2
+	default:
+		return nil, fmt.Errorf("unsupported subsample ratio: %v", frame.SubsampleRatio)
 	}
 
 	dst = appendPlane(dst, frame.Cb, frame.CStride, chromaWidth, chromaHeight)

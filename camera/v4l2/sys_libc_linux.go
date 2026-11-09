@@ -1,4 +1,5 @@
 //go:build libcamera && cgo
+
 package v4l2
 
 /*

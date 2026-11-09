@@ -1,10 +1,10 @@
 package overlay
 
 import (
-	"image"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
+	"image"
 )
 
 type Config struct {
@@ -30,10 +30,10 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha) {
 	}
 
 	textDrawer := font.Drawer{
-		Dst: pixels, // Draw onto the pixels we created above
-		Src: image.White,
+		Dst:  pixels, // Draw onto the pixels we created above
+		Src:  image.White,
 		Face: face,
-		Dot: fixed.P(5, 2+metrics.Ascent.Ceil()),
+		Dot:  fixed.P(5, 2+metrics.Ascent.Ceil()),
 	}
 
 	textDrawer.DrawString(cfg.Title)
@@ -41,10 +41,10 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha) {
 	// Draw it again on the alpha channel so
 	// we make the text fully opaque
 	textDrawer = font.Drawer{
-		Dst: alpha,
-		Src: image.White,
+		Dst:  alpha,
+		Src:  image.White,
 		Face: face,
-		Dot: fixed.P(5, 2+metrics.Ascent.Ceil()),
+		Dot:  fixed.P(5, 2+metrics.Ascent.Ceil()),
 	}
 
 	textDrawer.DrawString(cfg.Title)

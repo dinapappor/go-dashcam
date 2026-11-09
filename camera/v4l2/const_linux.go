@@ -35,7 +35,7 @@ const PixFmtMJPEG = 0x47504A4D
 const PixFmtYUYV = 0x56595559
 
 // PixFmtYUV420 is 'YU12': planar Y, Cb, Cr with 4:2:0 subsampling
-const PixFmtYUV420 =  0x32315559
+const PixFmtYUV420 = 0x32315559
 
 // VidiocGPARM reads stream parameters, including the frame interval and its capabilities.
 const VidiocGPARM = 0xC0CC5615
@@ -81,8 +81,8 @@ const VidiocExpBuf = 0xC0405610
 
 const DmaBufIoctlSync = 0x40086200
 const (
-        DmaBufSyncRead  = 1 << 0
-        DmaBufSyncWrite = 2 << 0
-        DmaBufSyncStart = 0 << 2
-        DmaBufSyncEnd   = 1 << 2
+	DmaBufSyncRead  = 1 << 0
+	DmaBufSyncWrite = 2 << 0
+	DmaBufSyncStart = 0 << 2
+	DmaBufSyncEnd   = 1 << 2
 )

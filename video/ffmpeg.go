@@ -15,9 +15,9 @@ type Encoder struct {
 	cmd  *exec.Cmd
 }
 
-func NewEncoder(inputArgs []string, outputArgs[]string) (*Encoder, error) {
+func NewEncoder(inputArgs []string, outputArgs []string) (*Encoder, error) {
 	encoder := Encoder{}
-	ffmpeg, err :=  exec.LookPath("ffmpeg")
+	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return nil, fmt.Errorf("Could not lookup ffmpeg path: %w", err)
 	}
@@ -57,7 +57,7 @@ func NewEncoder(inputArgs []string, outputArgs[]string) (*Encoder, error) {
 	var ffmpegEnv []string
 
 	for _, line := range os.Environ() {
-		if ! strings.HasPrefix(line, "LD_PRELOAD=") {
+		if !strings.HasPrefix(line, "LD_PRELOAD=") {
 			ffmpegEnv = append(ffmpegEnv, line)
 		}
 	}

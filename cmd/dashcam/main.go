@@ -116,7 +116,7 @@ func main() {
 
 	// Check for streaming capabilities.
 	// This means buffers that we queue and requeue later
-	if ! v4l2.HasCapability(capabilities, v4l2.StreamingFlag) {
+	if !v4l2.HasCapability(capabilities, v4l2.StreamingFlag) {
 		log.Printf("We do not have streaming capabilities")
 		return
 	}
@@ -152,7 +152,6 @@ func main() {
 		log.Printf("Unable to query for stream params, got: %s", err)
 		return
 	}
-
 
 	if !v4l2.HasCapability(streamParams.Capture.Capability, v4l2.CapTimePerFrame) {
 		log.Printf("We do not have TimePerFrame capability")

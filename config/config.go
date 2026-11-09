@@ -1,15 +1,15 @@
 package config
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 )
 
 type Config struct {
-	DashcamTitle    string `json:"dashcam_title"`
-	OutputDirectory string `json:"output_directory"`
+	DashcamTitle    string      `json:"dashcam_title"`
+	OutputDirectory string      `json:"output_directory"`
 	VideoConfig     VideoConfig `json:"video_config"`
 }
 
@@ -21,7 +21,7 @@ type VideoConfig struct {
 	Segmented       bool   `json:"segmented"`
 	SegmentDuration string `json:"segment_duration"`
 	PixelFormat     string `json:"pixel_format"`
-	Encoder         string `json:"encoder"` // For now we make this hardcoded in config.
+	Encoder         string `json:"encoder"`        // For now we make this hardcoded in config.
 	EncoderDevice   string `json:"encoder_device"` // as above - should be auto-detected
 	Bitrate         int32  `json:"bitrate"`
 }
@@ -72,22 +72,22 @@ func ParseConfig(path string) (Config, error) {
 	}
 
 	switch config.VideoConfig.PixelFormat {
-		case "MJPG", "YU12":
-			// Automatically accept these formats
-		case "":
-			// Set to mjpeg
-			config.VideoConfig.PixelFormat = "MJPG"
-		default:
-			return Config{}, fmt.Errorf("Unrecognised PixelFormat")
+	case "MJPG", "YU12":
+		// Automatically accept these formats
+	case "":
+		// Set to mjpeg
+		config.VideoConfig.PixelFormat = "MJPG"
+	default:
+		return Config{}, fmt.Errorf("Unrecognised PixelFormat")
 	}
 
 	switch config.VideoConfig.Encoder {
-		case "v4l2m2m", "software":
-			// Don't fail on this. This is for the pi
-		case "":
-			config.VideoConfig.Encoder = "software"
-		default:
-			return Config{}, fmt.Errorf("Unrecognised encoder")
+	case "v4l2m2m", "software":
+		// Don't fail on this. This is for the pi
+	case "":
+		config.VideoConfig.Encoder = "software"
+	default:
+		return Config{}, fmt.Errorf("Unrecognised encoder")
 	}
 
 	if config.VideoConfig.Encoder == "v4l2m2m" {
@@ -99,13 +99,12 @@ func ParseConfig(path string) (Config, error) {
 		}
 	}
 
-
 	return config, nil
 }
 
 func (c *Config) GetSegmentDuration() (time.Duration, error) {
 
-	if ! c.VideoConfig.Segmented {
+	if !c.VideoConfig.Segmented {
 		// In continous mode we don't use duration
 		return 0, nil
 	}

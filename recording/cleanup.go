@@ -1,8 +1,8 @@
 package recording
 
 import (
-	"os"
 	"fmt"
+	"os"
 )
 
 func Cleanup(path string) error {
@@ -23,7 +23,7 @@ func Cleanup(path string) error {
 			return fmt.Errorf("Unable to list recordings: %w", err)
 		}
 
-		if len(files) <2 {
+		if len(files) < 2 {
 			return fmt.Errorf("Only one file left, bailing")
 		}
 

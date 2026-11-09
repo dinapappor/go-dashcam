@@ -2,8 +2,8 @@ package video
 
 import (
 	"fmt"
-	"testing"
 	"slices"
+	"testing"
 )
 
 func TestInputArgsSuccessYUV422(t *testing.T) {
@@ -28,7 +28,7 @@ func TestInputArgsSuccessYUV422(t *testing.T) {
 		"30",
 	}
 
-	if ! slices.Equal(inputArgs, expected) {
+	if !slices.Equal(inputArgs, expected) {
 		t.Fatalf("TestInputArgsSuccessYUV422, inputArgs is incorrect, got %v", inputArgs)
 	}
 }
@@ -55,7 +55,7 @@ func TestInputArgsSuccessYUV420(t *testing.T) {
 		"24",
 	}
 
-	if ! slices.Equal(inputArgs, expected) {
+	if !slices.Equal(inputArgs, expected) {
 		t.Fatalf("TestInputArgsSuccessYUV420, inputArgs is incorrect, got %v", inputArgs)
 	}
 }

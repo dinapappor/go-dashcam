@@ -3,8 +3,8 @@ package v4l2
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 )

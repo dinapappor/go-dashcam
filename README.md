@@ -1,6 +1,6 @@
 # go-dashcam
 
-A Go learning project for a dashcam. Captures camera frames through direct Linux V4L2 ioctl calls and pipes MJPEG to FFmpeg for H.264 recording.
+A Go learning project for a dashcam. Captures camera frames through direct Linux V4L2 ioctl calls and pipes frames to ffmpeg.
 
 ## Run
 

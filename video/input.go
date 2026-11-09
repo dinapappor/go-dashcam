@@ -56,6 +56,14 @@ func InputArgs(cfg InputConfig) ([]string, error) {
 	return inputArgs, nil
 }
 
+// For when we run on raspberry pi's or when we have hardware encoders exposed in v4l2
+func H264InputArgs(framerate uint32) ([]string, error) {
+	if framerate == 0 {
+		return nil, fmt.Errorf("Cant have zero fps")
+	}
+	return []string{"-f", "h264", "-framerate", fmt.Sprint(framerate)}, nil
+}
+
 func ValidateSubsampleRatio(ycbcr *image.YCbCr, expected PixelFormat) error {
 	// validate that inputs are okay
 	// we'd rather end life gracefully
@@ -79,6 +87,10 @@ func ValidateSubsampleRatio(ycbcr *image.YCbCr, expected PixelFormat) error {
 
 // I do not understand this function - YET!
 func appendPlane(dst []byte, src []byte, stride int, width int, height int) []byte {
+	// With no row padding, the whole plane can be copied in one operation.
+	if stride == width {
+		return append(dst, src[:width*height]...)
+	}
 
 	for row := 0; row < height; row++ {
 		start := row * stride

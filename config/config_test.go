@@ -52,6 +52,55 @@ func TestParseConfigPixelFormat(t *testing.T) {
 	}
 }
 
+func TestParseConfigEncoder(t *testing.T) {
+	tests := []struct {
+		name        string
+		field       string
+		want        string
+		wantDevice  string
+		wantBitrate int32
+		wantErr     bool
+	}{
+		{name: "missing defaults to software", want: "software"},
+		{name: "empty defaults to software", field: `,"encoder":""`, want: "software"},
+		{name: "explicit software", field: `,"encoder":"software"`, want: "software"},
+		{name: "software needs no device or bitrate", field: `,"encoder":"software","bitrate":0`, want: "software"},
+		{name: "v4l2m2m with device and bitrate", field: `,"encoder":"v4l2m2m","encoder_device":"/dev/video11","bitrate":4000000`, want: "v4l2m2m", wantDevice: "/dev/video11", wantBitrate: 4000000},
+		{name: "unknown encoder", field: `,"encoder":"nvenc"`, wantErr: true},
+		{name: "v4l2m2m without device", field: `,"encoder":"v4l2m2m","bitrate":4000000`, wantErr: true},
+		{name: "v4l2m2m with empty device", field: `,"encoder":"v4l2m2m","encoder_device":"","bitrate":4000000`, wantErr: true},
+		{name: "v4l2m2m without bitrate", field: `,"encoder":"v4l2m2m","encoder_device":"/dev/video11"`, wantErr: true},
+		{name: "v4l2m2m with zero bitrate", field: `,"encoder":"v4l2m2m","encoder_device":"/dev/video11","bitrate":0`, wantErr: true},
+		{name: "v4l2m2m with negative bitrate", field: `,"encoder":"v4l2m2m","encoder_device":"/dev/video11","bitrate":-1`, wantErr: true},
+		{name: "bitrate too large for int32", field: `,"encoder":"v4l2m2m","encoder_device":"/dev/video11","bitrate":3000000000`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30` + tt.field + `}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got config %+v", cfg.VideoConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.VideoConfig.Encoder != tt.want {
+				t.Errorf("Encoder = %q, want %q", cfg.VideoConfig.Encoder, tt.want)
+			}
+			if cfg.VideoConfig.EncoderDevice != tt.wantDevice {
+				t.Errorf("EncoderDevice = %q, want %q", cfg.VideoConfig.EncoderDevice, tt.wantDevice)
+			}
+			if cfg.VideoConfig.Bitrate != tt.wantBitrate {
+				t.Errorf("Bitrate = %d, want %d", cfg.VideoConfig.Bitrate, tt.wantBitrate)
+			}
+		})
+	}
+}
+
 func TestParseConfigValid(t *testing.T) {
 	path := writeConfigFile(t, `{"dashcam_title":"Andreas Dashcam","video_config":{"video_source":"/dev/video4","width":1280,"height":720,"fps":30,"segmented":true,"segment_duration":"1.5s"}}`)
 	cfg, err := ParseConfig(path)

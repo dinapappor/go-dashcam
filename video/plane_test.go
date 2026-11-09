@@ -16,6 +16,13 @@ func TestAppendPlane(t *testing.T) {
 		want   []byte
 	}{
 		{
+			name:   "tight plane excludes trailing data and preserves destination",
+			dst:    []byte{1, 2},
+			src:    []byte{10, 20, 30, 40, 99, 99},
+			stride: 2, width: 2, height: 2,
+			want: []byte{1, 2, 10, 20, 30, 40},
+		},
+		{
 			name: "skip row padding",
 			src: []byte{
 				10, 20, 30, 99,

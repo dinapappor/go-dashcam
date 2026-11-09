@@ -10,6 +10,11 @@ Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L
 go run ./cmd/dashcam
 ```
 
+or with Raspberry pi's (3, 4 and zero 2w)
+```
+LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam
+```
+
 ## Current config file format
 
 Subject to change - for instance if we have multiple cameras in the future.
@@ -22,12 +27,47 @@ Subject to change - for instance if we have multiple cameras in the future.
         "height": 720,
         "fps": 30,
         "segmented": true,
-        "segment_duration": "10s"
+        "segment_duration": "10s",
+        "pixel_format": "MJPG",
+        "encoder": "software"
     }
 }
 ```
 
+Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
+```json
+{
+    "dashcam_title": "Andreas Dashcam",
+    "video_config": {
+        "video_source": "/dev/video0",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "segmented": true,
+        "segment_duration": "10s",
+        "pixel_format": "YU12",
+        "encoder": "v4l2m2m",
+        "encoder_device": "/dev/video11",
+        "bitrate": 4000000
+    }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `segmented` | `true` splits recordings into `segment_duration` pieces; `false` records one continuous file. |
+| `segment_duration` | Go duration such as `10s`, `1.5s` or `2m`. Required when `segmented` is `true`. |
+| `pixel_format` | `MJPG` (default, USB webcams) or `YU12` (raw frames, e.g. libcamera on a Pi). |
+| `encoder` | `software` (default, FFmpeg libx264) or `v4l2m2m` (hardware H.264, Pi 4 / Zero 2 W). |
+| `encoder_device` | Hardware encoder device. Required with `v4l2m2m`. |
+| `bitrate` | Bits per second for the hardware encoder. Required with `v4l2m2m`. |
+
 Currently stops after 300 frames or Ctrl+C. Existing output files are not overwritten. Device paths may change between connections.
+
+## Building it
+
+On normal platforms do `go build  ./cmd/dashcam`. On Raspberry pi's (with libcamera) do `go build -tags libcamera ./cmd/dashcam`
+
 
 ## Tests
 
@@ -102,3 +142,8 @@ encoder so it can support both decoded MJPEG and packed YUYV frames.
 Development currently uses Linux. Raspberry Pi 4 and 5 are the first deployment targets; the complete pipeline still needs benchmarking on both.
 
 Long-term goals include Linux and FreeBSD on ARM64, AMD64, and RISC-V. These are intended targets, not verified support.
+
+## Supported platforms
+
+- Raspberry Pi {3, 4, zero 2w} - at 1080p with 30 fps (~7% CPU usage in total)
+- amd64/x86_64 with usb webcamera.

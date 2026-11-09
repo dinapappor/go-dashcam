@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"syscall"
 	"unsafe"
 )
 
@@ -287,6 +288,30 @@ func StreamOff(fd uintptr) error {
 
 	if err != nil {
 		return fmt.Errorf("Unable to set stream off: %w", err)
+	}
+	return nil
+}
+
+func ExportBuffer(fd uintptr, index uint32) (int, error) {
+	var exportBuffer V4L2ExportBuffer
+	exportBuffer.Type = BufTypeVideoCapture
+	exportBuffer.Index = index
+	exportBuffer.Plane = 0
+	exportBuffer.Flags = uint32(syscall.O_CLOEXEC)
+	err := ioctlDevice(fd, VidiocExpBuf, unsafe.Pointer(&exportBuffer))
+
+	if err != nil {
+		return -1, fmt.Errorf("Unable to set export buffer, got %w", err)
+	}
+	return int(exportBuffer.Fd), nil
+}
+
+func SyncBuffer(fd int, flags uint64) error {
+	sync := DmaBufSync{Flags: flags}
+	err := ioctlDevice(uintptr(fd), DmaBufIoctlSync, unsafe.Pointer(&sync))
+
+	if err != nil {
+		return fmt.Errorf("Unable to sync DMA buffer, got %w", err)
 	}
 	return nil
 }

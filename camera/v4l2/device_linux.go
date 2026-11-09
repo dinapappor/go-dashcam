@@ -13,6 +13,7 @@ type Device struct {
 	fd        int
 	buffers   [][]byte
 	streaming bool
+	exports   []int
 }
 
 type Frame struct {
@@ -45,6 +46,13 @@ func (d *Device) Close() error {
 			closeErr = errors.Join(closeErr, fmt.Errorf("Unable to shut down stream: %w", err))
 		}
 	}
+	for _, eb := range d.exports {
+		err := closeDevice(eb)
+		if err != nil {
+			closeErr = errors.Join(closeErr, fmt.Errorf("close export %d: %w", eb, err))
+		}
+	}
+	d.exports = nil
 	// Munmap all the buffers
 	for index := range d.buffers {
 		// In case we already closed the buffer
@@ -100,6 +108,19 @@ func (d *Device) SetupBuffers(count uint32) error {
 	return nil
 }
 
+func (d *Device) ExportBuffers() error {
+	for index := range d.buffers {
+		exportFd, err := ExportBuffer(d.Fd(), uint32(index))
+
+		if err != nil {
+			return fmt.Errorf("Could not export buffer %d: %w", index, err)
+		}
+
+		d.exports = append(d.exports, exportFd)
+	}
+	return nil
+}
+
 func (d *Device) Buffers() [][]byte {
 	return d.buffers
 }
@@ -111,11 +132,11 @@ func (d *Device) NextFrame(ctx context.Context) (Frame, error) {
 
 		if errors.Is(err, syscall.EAGAIN) {
 			select {
-				case <- ctx.Done():
-					return Frame{}, ctx.Err()
-				case <- time.After(10 * time.Millisecond):
-				}
-				continue
+			case <-ctx.Done():
+				return Frame{}, ctx.Err()
+			case <-time.After(10 * time.Millisecond):
+			}
+			continue
 		}
 
 		if err != nil {
@@ -176,4 +197,26 @@ func (d *Device) StreamOff() error {
 	}
 	d.streaming = false
 	return nil
+}
+
+func (d *Device) ExportFd(frame Frame) (int, error) {
+	index := int(frame.buffer.Index)
+
+	if index >= len(d.exports) {
+		return -1, fmt.Errorf("buffer %d has no export", index)
+	}
+
+	return d.exports[index], nil
+}
+
+func (f Frame) Index() uint32 {
+	return f.buffer.Index
+}
+
+func (f Frame) Sequence() uint32 {
+	return f.buffer.Sequence
+}
+
+func (f Frame) Timestamp() syscall.Timeval {
+	return f.buffer.TimeStamp
 }

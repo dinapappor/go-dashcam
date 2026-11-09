@@ -104,3 +104,12 @@ func (e *Encoder) WriteFrame(data []byte) error {
 	}
 	return nil
 }
+
+func (e *Encoder) Write(data []byte) (int, error) {
+	err := e.WriteFrame(data)
+
+	if err != nil {
+		return 0, fmt.Errorf("Could not Write data with WriteFrame: %w", err)
+	}
+	return len(data), nil
+}

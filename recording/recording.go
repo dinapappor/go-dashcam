@@ -18,6 +18,7 @@ type Config struct {
 	SegmentDuration time.Duration
 	OutputDirectory string
 	FrameRate       uint32
+	StreamCopy      bool
 }
 
 func OutputArgs(cfg Config, now time.Time) ([]string, error) {
@@ -36,10 +37,15 @@ func OutputArgs(cfg Config, now time.Time) ([]string, error) {
 			if cfg.SegmentDuration <= 0 {
 				return nil, fmt.Errorf("We need a positive segment duration or else we divide by zero")
 			}
+			if ! cfg.StreamCopy {
+				outputArgs = append(
+					outputArgs,
+					"-force_key_frames",
+					fmt.Sprintf("expr:gte(t,n_forced*%g)", cfg.SegmentDuration.Seconds()),
+				)
+			}
 			outputArgs = append(
 				outputArgs,
-				"-force_key_frames",
-				fmt.Sprintf("expr:gte(t,n_forced*%g)", cfg.SegmentDuration.Seconds()),
 				"-f", "segment",
 				"-segment_time", fmt.Sprint(cfg.SegmentDuration.Seconds()),
 				"-segment_time_delta", fmt.Sprint(1.0/(2*float64(cfg.FrameRate))),

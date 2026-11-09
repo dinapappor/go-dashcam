@@ -6,17 +6,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/dinapappor/go-dashcam/camera/v4l2"
+	"github.com/dinapappor/go-dashcam/config"
+	"github.com/dinapappor/go-dashcam/overlay"
+	"github.com/dinapappor/go-dashcam/recording"
+	"github.com/dinapappor/go-dashcam/video"
+	"github.com/dinapappor/go-dashcam/video/v4l2m2m"
 	"image"
 	"image/jpeg"
 	"log"
 	"os"
 	"os/signal"
 	"time"
-	"github.com/dinapappor/go-dashcam/camera/v4l2"
-	"github.com/dinapappor/go-dashcam/config"
-	"github.com/dinapappor/go-dashcam/overlay"
-	"github.com/dinapappor/go-dashcam/recording"
-	"github.com/dinapappor/go-dashcam/video"
 )
 
 func main() {
@@ -40,7 +41,6 @@ func main() {
 
 	dashcamConfig, err := config.ParseConfig("/home/andreas/dashcam_config.json")
 
-
 	if err != nil {
 		log.Printf("Could not open config file %v", err)
 		return
@@ -49,7 +49,6 @@ func main() {
 	overlayConfig := overlay.Config{Title: dashcamConfig.DashcamTitle}
 
 	dashcamTitleImageGray, dashcamTitleImageAlpha := overlay.RenderTitle(overlayConfig)
-
 
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
 
@@ -83,7 +82,6 @@ func main() {
 		return
 	}
 
-
 	log.Printf("Device Capability struct:%+v", deviceCapability)
 
 	driverName, err := v4l2.ConvertByteToString(deviceCapability.Driver[:])
@@ -92,7 +90,6 @@ func main() {
 		log.Printf("Could not get driver name, err: %s", err)
 		return
 	}
-
 
 	cameraName, err := v4l2.ConvertByteToString(deviceCapability.Card[:])
 
@@ -147,10 +144,10 @@ func main() {
 	// To hold which format we request from camera
 	var requestedFourCC uint32
 	switch dashcamConfig.VideoConfig.PixelFormat {
-		case "MJPG":
-			requestedFourCC = v4l2.PixFmtMJPEG
-		case "YU12":
-			requestedFourCC = v4l2.PixFmtYUV420
+	case "MJPG":
+		requestedFourCC = v4l2.PixFmtMJPEG
+	case "YU12":
+		requestedFourCC = v4l2.PixFmtYUV420
 	}
 
 	requestedFormat, err := v4l2.SetVideoCaptureFormat(
@@ -193,14 +190,25 @@ func main() {
 		return
 	}
 
-
 	log.Printf("%+v", requestedParams.Capture.TimePerFrame)
+
+	// see if we have hardware mode (v4l2m2m). This is /dev/video11 on the pi's
+	hardware := dashcamConfig.VideoConfig.Encoder == "v4l2m2m"
 
 	err = device.SetupBuffers(4)
 
 	if err != nil {
 		log.Printf("Unable to setup buffers: %v", err)
 		return
+	}
+
+	if hardware {
+		err := device.ExportBuffers()
+
+		if err != nil {
+			log.Printf("Could not setup export buffers: %v", err)
+			return
+		}
 	}
 
 	mode := recording.Continuous
@@ -214,6 +222,7 @@ func main() {
 		SegmentDuration: segmentDuration,
 		OutputDirectory: "videos",
 		FrameRate:       dashcamConfig.VideoConfig.FrameRate,
+		StreamCopy:      hardware,
 	}
 
 	outputArgs, err := recording.OutputArgs(recordingConfig, time.Now())
@@ -229,22 +238,32 @@ func main() {
 	}
 
 	inputConfig := video.InputConfig{
-		Width: dashcamConfig.VideoConfig.Width,
-		Height: dashcamConfig.VideoConfig.Height,
-		FrameRate: dashcamConfig.VideoConfig.FrameRate,
+		Width:       dashcamConfig.VideoConfig.Width,
+		Height:      dashcamConfig.VideoConfig.Height,
+		FrameRate:   dashcamConfig.VideoConfig.FrameRate,
 		PixelFormat: inputPixelFormat,
 	}
 
-	inputArgs, err := video.InputArgs(inputConfig)
+	var inputArgs []string
+
+	if hardware {
+		inputArgs, err = video.H264InputArgs(dashcamConfig.VideoConfig.FrameRate)
+	} else {
+		inputArgs, err = video.InputArgs(inputConfig)
+	}
 
 	if err != nil {
 		log.Printf("InputArgs: %v", err)
 		return
 	}
 
-
 	// Find a way to  make the pi use h264_v4l2m2m on pi3/pi4/pizero2w
-	outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
+	if hardware {
+		outputArgs = append([]string{"-c:v", "copy"}, outputArgs...)
+	} else {
+		outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
+	}
+	//outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
 	encoder, err := video.NewEncoder(inputArgs, outputArgs)
 
 	if err != nil {
@@ -273,9 +292,153 @@ func main() {
 		}
 	}()
 
+	var hwEncoder *v4l2m2m.Encoder
+	if hardware {
+		hwEncoder, err = v4l2m2m.Open(v4l2m2m.Config{
+			Device:           dashcamConfig.VideoConfig.EncoderDevice,
+			Width:            dashcamConfig.VideoConfig.Width,
+			Height:           dashcamConfig.VideoConfig.Height,
+			Stride:           requestedFormat.PixFormat.Bytesperline,
+			FrameRate:        dashcamConfig.VideoConfig.FrameRate,
+			Bitrate:          dashcamConfig.VideoConfig.Bitrate,
+			KeyframeInterval: int32(segmentDuration.Seconds() * float64(dashcamConfig.VideoConfig.FrameRate)),
+			InputSlots:       uint32(len(device.Buffers())),
+			OutputBuffers:    4,
+		})
+		if err != nil {
+			log.Printf("Unable to open hardware encoder: %v", err)
+			return
+		}
+		defer func() {
+			if err := hwEncoder.Close(); err != nil {
+				log.Printf("Hardware encoder close: %v", err)
+			}
+		}()
+	}
+
 	err = device.StreamOn()
 	if err != nil {
 		log.Printf("Unable to start stream: %v", err)
+		return
+	}
+
+	if hardware {
+		held := make([]v4l2.Frame, len(device.Buffers()))
+		inFlight := make([]bool, len(device.Buffers()))
+		inFlightCount := 0
+
+		pump := func() error {
+			for {
+				slot, ok, err := hwEncoder.DequeueInput()
+				if !ok && err == nil {
+					break
+				}
+				if !ok {
+					return err
+				}
+				if int(slot) >= len(inFlight) || !inFlight[slot] {
+					return fmt.Errorf("encoder returned slot %d that was not in flight", slot)
+				}
+				if err != nil {
+					log.Printf("Encoder input: %v", err)
+				}
+				inFlight[slot] = false
+				inFlightCount--
+				err = device.Requeue(held[slot])
+				if err != nil {
+					return err
+				}
+			}
+			for {
+				_, ok, err := hwEncoder.DequeueOutput(encoder)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					break
+				}
+			}
+			return nil
+		}
+
+		stride := int(requestedFormat.PixFormat.Bytesperline)
+		width := int(requestedFormat.PixFormat.Width)
+		height := int(requestedFormat.PixFormat.Height)
+		const rw = v4l2.DmaBufSyncRead | v4l2.DmaBufSyncWrite
+
+		for frameNumber := 0; frameNumber < 900 && ctx.Err() == nil; {
+			err := pump()
+			if err != nil {
+				log.Printf("Hardware encoder: %v", err)
+				return
+			}
+			if inFlightCount == len(held) {
+				time.Sleep(time.Millisecond)
+				continue
+			}
+
+			frame, err := device.NextFrame(ctx)
+			if err != nil {
+				log.Printf("Unable to get frame: %v", err)
+				return
+			}
+			if uint32(len(frame.Data)) < requestedFormat.PixFormat.Sizeimage {
+				err = device.Requeue(frame)
+				if err != nil {
+					log.Printf("Could not requeue the buffer: %v", err)
+					return
+				}
+				continue
+			}
+
+			exportFd, err := device.ExportFd(frame)
+			if err != nil {
+				log.Printf("No export fd: %v", err)
+				return
+			}
+			err = v4l2.SyncBuffer(exportFd, v4l2.DmaBufSyncStart|rw)
+			if err != nil {
+				log.Printf("Sync start: %v", err)
+				return
+			}
+			overlay.BlendTitle(frame.Data[:stride*height], stride, width, height, dashcamTitleImageGray, dashcamTitleImageAlpha, 0, 0)
+			err = v4l2.SyncBuffer(exportFd, v4l2.DmaBufSyncEnd|rw)
+			if err != nil {
+				log.Printf("Sync end: %v", err)
+				return
+			}
+
+			index := frame.Index()
+			err = hwEncoder.QueueInput(index, exportFd, uint32(len(device.Buffers()[index])), hwEncoder.SizeImage(), frame.Timestamp())
+			if err != nil {
+				log.Printf("Queue to encoder: %v", err)
+				return
+			}
+			held[index] = frame
+			inFlight[index] = true
+			inFlightCount++
+			frameNumber++
+		}
+
+		deadline := time.Now().Add(2 * time.Second)
+		lastOutputs := time.Now().Add(200 * time.Millisecond)
+		for time.Now().Before(deadline) {
+			err := pump()
+			if err != nil {
+				log.Printf("Hardware encoder drain: %v", err)
+				return
+			}
+			if inFlightCount == 0 && time.Now().After(lastOutputs) {
+				break
+			}
+			if inFlightCount > 0 {
+				lastOutputs = time.Now().Add(200 * time.Millisecond)
+			}
+			time.Sleep(time.Millisecond)
+		}
+		if inFlightCount > 0 {
+			log.Printf("Hardware encoder still held %d frames at shutdown", inFlightCount)
+		}
 		return
 	}
 
@@ -296,36 +459,36 @@ func main() {
 			return
 		}
 
-	        var ycbcr *image.YCbCr
+		var ycbcr *image.YCbCr
 		// decode the image so we can draw title overlay over it
 		if dashcamConfig.VideoConfig.PixelFormat == "YU12" {
 			width := int(requestedFormat.PixFormat.Width)
-                        height := int(requestedFormat.PixFormat.Height)
-                        yStride := int(requestedFormat.PixFormat.Bytesperline)
-                        cStride := yStride / 2
-                        ySize := yStride * height
-                        cSize := cStride * ((height + 1) / 2)
+			height := int(requestedFormat.PixFormat.Height)
+			yStride := int(requestedFormat.PixFormat.Bytesperline)
+			cStride := yStride / 2
+			ySize := yStride * height
+			cSize := cStride * ((height + 1) / 2)
 
-                        if len(frame.Data) < ySize+2*cSize {
-                                log.Printf("YU12 frame too short: got %d bytes, want %d", len(frame.Data), ySize+2*cSize)
-                                err = device.Requeue(frame)
-                                if err != nil {
-                                        log.Printf("Could not requeue the buffer: %v", err)
-                                        return
-                                }
+			if len(frame.Data) < ySize+2*cSize {
+				log.Printf("YU12 frame too short: got %d bytes, want %d", len(frame.Data), ySize+2*cSize)
+				err = device.Requeue(frame)
+				if err != nil {
+					log.Printf("Could not requeue the buffer: %v", err)
+					return
+				}
 
-                                continue
-                        }
+				continue
+			}
 
-                        ycbcr = &image.YCbCr{
-                                Y:              frame.Data[:ySize],
-                                Cb:             frame.Data[ySize : ySize+cSize],
-                                Cr:             frame.Data[ySize+cSize : ySize+2*cSize],
-                                YStride:        yStride,
-                                CStride:        cStride,
-                                SubsampleRatio: image.YCbCrSubsampleRatio420,
-                                Rect:           image.Rect(0, 0, width, height),
-                        }
+			ycbcr = &image.YCbCr{
+				Y:              frame.Data[:ySize],
+				Cb:             frame.Data[ySize : ySize+cSize],
+				Cr:             frame.Data[ySize+cSize : ySize+2*cSize],
+				YStride:        yStride,
+				CStride:        cStride,
+				SubsampleRatio: image.YCbCrSubsampleRatio420,
+				Rect:           image.Rect(0, 0, width, height),
+			}
 		} else {
 			// Assume mjpeg for now
 			decoded, err := jpeg.Decode(bytes.NewReader(frame.Data))
@@ -377,11 +540,7 @@ func main() {
 			0,
 		)
 
-		// Assembled needed stuff in one step before send off
-		// to ffmpeg
-
 		rawFrame, err = video.PackFrame(rawFrame, ycbcr)
-
 		if err != nil {
 			log.Printf("Could not pack frame: %v", err)
 			return

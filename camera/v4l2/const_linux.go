@@ -75,3 +75,14 @@ const VidiocDQBuf = 0xc0585611
 // BufFlagError marks a dequeued buffer whose frame may be corrupted.
 // Skip its data; the buffer can still be requeued to continue capture.
 const BufFlagError = 0x00000040
+
+// needed for dma-buf
+const VidiocExpBuf = 0xC0405610
+
+const DmaBufIoctlSync = 0x40086200
+const (
+        DmaBufSyncRead  = 1 << 0
+        DmaBufSyncWrite = 2 << 0
+        DmaBufSyncStart = 0 << 2
+        DmaBufSyncEnd   = 1 << 2
+)

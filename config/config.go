@@ -13,13 +13,16 @@ type Config struct {
 }
 
 type VideoConfig struct {
-	VideoSource     string `json:"video_source"` // camera
+	VideoSource     string `json:"video_source"` // camera - ie /dev/video0
 	Width           uint32 `json:"width"`
 	Height          uint32 `json:"height"`
 	FrameRate       uint32 `json:"fps"`
 	Segmented       bool   `json:"segmented"`
 	SegmentDuration string `json:"segment_duration"`
 	PixelFormat     string `json:"pixel_format"`
+	Encoder         string `json:"encoder"` // For now we make this hardcoded in config.
+	EncoderDevice   string `json:"encoder_device"` // as above - should be auto-detected
+	Bitrate         int32  `json:"bitrate"`
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -71,6 +74,24 @@ func ParseConfig(path string) (Config, error) {
 			config.VideoConfig.PixelFormat = "MJPG"
 		default:
 			return Config{}, fmt.Errorf("Unrecognised PixelFormat")
+	}
+
+	switch config.VideoConfig.Encoder {
+		case "v4l2m2m", "software":
+			// Don't fail on this. This is for the pi
+		case "":
+			config.VideoConfig.Encoder = "software"
+		default:
+			return Config{}, fmt.Errorf("Unrecognised encoder")
+	}
+
+	if config.VideoConfig.Encoder == "v4l2m2m" {
+		if config.VideoConfig.EncoderDevice == "" {
+			return Config{}, fmt.Errorf("EncoderDevice must be set when using v4l2m2m")
+		}
+		if config.VideoConfig.Bitrate <= 0 {
+			return Config{}, fmt.Errorf("Bitrate must be set when using v4l2m2m")
+		}
 	}
 
 

@@ -97,3 +97,17 @@ type V4L2BufferMemory struct {
 	Offset     uint32
 	Remaining [4]byte
 }
+
+// needed for DMA-BUF on the PIs
+type V4L2ExportBuffer struct {
+	Type     uint32
+	Index    uint32
+	Plane    uint32
+	Flags    uint32
+	Fd       int32
+	Reserved [11]uint32
+}
+
+type DmaBufSync struct {
+	Flags uint64
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -47,6 +48,21 @@ func NewEncoder(inputArgs []string, outputArgs[]string) (*Encoder, error) {
 	// This is what we write to
 	encoder.pipe = write
 
+	// When we start dashcam on Raspberry PIs we do
+	// it with LD_PRELOAD to get libcamera
+	// to expose the cameras as v4l2 devices.
+	// This unfortunately gets passed onto ffmpeg which
+	// gives weird logging but can have unforseen consequences
+	// hence we need to filter it out here.
+	var ffmpegEnv []string
+
+	for _, line := range os.Environ() {
+		if ! strings.HasPrefix(line, "LD_PRELOAD=") {
+			ffmpegEnv = append(ffmpegEnv, line)
+		}
+	}
+
+	encoder.cmd.Env = ffmpegEnv
 	err = encoder.cmd.Start()
 	if err != nil {
 		read.Close()

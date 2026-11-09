@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	DashcamTitle  string `json:"dashcam_title"`
-	VideoConfig VideoConfig `json:"video_config"`
+	DashcamTitle    string `json:"dashcam_title"`
+	OutputDirectory string `json:"output_directory"`
+	VideoConfig     VideoConfig `json:"video_config"`
 }
 
 type VideoConfig struct {
@@ -29,7 +30,7 @@ func ParseConfig(path string) (Config, error) {
 	configFile, err := os.Open(path)
 
 	if err != nil {
-		return Config{}, fmt.Errorf("Unable to poen config file: %w", err)
+		return Config{}, fmt.Errorf("Unable to open config file: %w", err)
 	}
 
 	defer configFile.Close()
@@ -40,6 +41,10 @@ func ParseConfig(path string) (Config, error) {
 
 	if err != nil {
 		return Config{}, fmt.Errorf("Could not parse config: %w", err)
+	}
+
+	if config.OutputDirectory == "" {
+		config.OutputDirectory = "videos"
 	}
 
 	if config.VideoConfig.Width == 0 {

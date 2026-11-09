@@ -18,6 +18,30 @@ func writeConfigFile(t *testing.T, contents string) string {
 	return path
 }
 
+func TestParseConfigOutputDirectory(t *testing.T) {
+	tests := []struct {
+		name  string
+		field string
+		want  string
+	}{
+		{name: "Output directory defaults to videos", want: "videos"},
+		{name: "Set outputdirectory is kept", field: `,"output_directory":"test123"`, want: "test123"},
+		{name: "Empty outputdirectory gives videos", field: `,"output_directory":""`, want: "videos"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30}` + tt.field + `}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.OutputDirectory != tt.want {
+				t.Errorf("OutputDirectory = %q, want %q", cfg.OutputDirectory, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseConfigPixelFormat(t *testing.T) {
 	tests := []struct {
 		name    string

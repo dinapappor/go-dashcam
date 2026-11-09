@@ -48,6 +48,13 @@ func main() {
 		return
 	}
 
+	err = os.MkdirAll(dashcamConfig.OutputDirectory, 0755)
+
+	if err != nil {
+		log.Printf("Could not create output directory: %v", err)
+		return
+	}
+
 	overlayConfig := overlay.Config{Title: dashcamConfig.DashcamTitle}
 
 	dashcamTitleImageGray, dashcamTitleImageAlpha := overlay.RenderTitle(overlayConfig)
@@ -222,7 +229,7 @@ func main() {
 	recordingConfig := recording.Config{
 		Mode:            mode,
 		SegmentDuration: segmentDuration,
-		OutputDirectory: "videos",
+		OutputDirectory: dashcamConfig.OutputDirectory,
 		FrameRate:       dashcamConfig.VideoConfig.FrameRate,
 		StreamCopy:      hardware,
 	}

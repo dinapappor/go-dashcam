@@ -23,6 +23,7 @@ Subject to change - for instance if we have multiple cameras in the future.
 ```json
 {
     "dashcam_title": "Andreas Dashcam",
+    "output_directory": "/path/to/storage",
     "video_config": {
         "video_source": "/dev/video4",
         "width": 1280,
@@ -40,6 +41,7 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 ```json
 {
     "dashcam_title": "Andreas Dashcam",
+    "output_directory": "/path/to/storage",
     "video_config": {
         "video_source": "/dev/video0",
         "width": 1920,
@@ -57,6 +59,7 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 
 | Field | Meaning |
 |---|---|
+| `output_directory` | Where recordings are saved. Defaults to `videos`; created if it does not exist. |
 | `segmented` | `true` splits recordings into `segment_duration` pieces; `false` records one continuous file. |
 | `segment_duration` | Go duration such as `10s`, `1.5s` or `2m`. Required when `segmented` is `true`. |
 | `pixel_format` | `MJPG` (default, USB webcams) or `YU12` (raw frames, e.g. libcamera on a Pi). |

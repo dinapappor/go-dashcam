@@ -22,7 +22,9 @@ import (
 
 func main() {
 	cpuProfile := flag.String("cpuprofile", "", "write a CPU profile to this file")
+	configFile := flag.String("config", "dashcam_config.json", "Config file to use")
 	flag.Parse()
+
 	if *cpuProfile != "" {
 		stopProfile, err := startCPUProfile(*cpuProfile)
 		if err != nil {
@@ -39,7 +41,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	dashcamConfig, err := config.ParseConfig("/home/andreas/dashcam_config.json")
+	dashcamConfig, err := config.ParseConfig(*configFile)
 
 	if err != nil {
 		log.Printf("Could not open config file %v", err)

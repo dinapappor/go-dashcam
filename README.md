@@ -7,13 +7,15 @@ A Go learning project for a dashcam. Captures camera frames through direct Linux
 Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera supporting MJPEG at 1280×720 and 30 fps.
 
 ```sh
-go run ./cmd/dashcam
+go run ./cmd/dashcam -config /path/to/config_file.json
 ```
 
 or with Raspberry pi's (3, 4 and zero 2w)
 ```
-LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam
+LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam -config /path/to/config_file.json
 ```
+
+Should `-config` be omitted it will default to try to load `dashcam_config.json` from the same PWD as the dashcam is running from
 
 ## Current config file format
 

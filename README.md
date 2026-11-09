@@ -67,8 +67,6 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 | `encoder_device` | Hardware encoder device. Required with `v4l2m2m`. |
 | `bitrate` | Bits per second for the hardware encoder. Required with `v4l2m2m`. |
 
-Currently stops after 300 frames or Ctrl+C. Existing output files are not overwritten. Device paths may change between connections.
-
 ## Building it
 
 On normal platforms do `go build  ./cmd/dashcam`. On Raspberry pi's (with libcamera) do `go build -tags libcamera ./cmd/dashcam`

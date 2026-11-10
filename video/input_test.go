@@ -48,7 +48,7 @@ func TestInputArgsSuccessYUV420(t *testing.T) {
 		"-f",
 		"rawvideo",
 		"-pix_fmt",
-		"yuv420p",
+		"yuvj420p",
 		"-video_size",
 		"1920x1080",
 		"-framerate",

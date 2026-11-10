@@ -228,3 +228,65 @@ func TestCloseStreamingNotV4L2Device(t *testing.T) {
 		t.Errorf("File should be closed even when StreamOff fails, got %v", err)
 	}
 }
+
+func TestExportFdKnownIndex(t *testing.T) {
+	d := &Device{exports: []int{10, 11}}
+	frame := Frame{buffer: V4L2Buffer{Index: 1}}
+
+	fd, err := d.ExportFd(frame)
+	if err != nil {
+		t.Fatalf("ExportFd should succeed, got %v", err)
+	}
+
+	if fd != 11 {
+		t.Errorf("ExportFd should return 11, got %d", fd)
+	}
+}
+
+func TestExportFdMissingExport(t *testing.T) {
+	d := &Device{exports: []int{10, 11}}
+	frame := Frame{buffer: V4L2Buffer{Index: 5}}
+
+	fd, err := d.ExportFd(frame)
+	if err == nil {
+		t.Fatalf("ExportFd should fail for a buffer without an export")
+	}
+
+	if fd != -1 {
+		t.Errorf("ExportFd should return -1 on failure, got %d", fd)
+	}
+}
+
+func TestExportBuffersNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to create temporary file: %v", err)
+	}
+	file.Close()
+
+	d, err := Open(file.Name())
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	defer d.Close()
+
+	d.buffers = make([][]byte, 2)
+
+	err = d.ExportBuffers()
+	if !errors.Is(err, syscall.ENOTTY) {
+		t.Errorf("ExportBuffers should fail with ENOTTY, got %v", err)
+	}
+
+	if len(d.exports) != 0 {
+		t.Errorf("No exports should be stored after failure, got %d", len(d.exports))
+	}
+}
+
+func TestExportBuffersNoBuffers(t *testing.T) {
+	d := &Device{}
+
+	err := d.ExportBuffers()
+	if err != nil {
+		t.Errorf("ExportBuffers with no buffers should succeed, got %v", err)
+	}
+}

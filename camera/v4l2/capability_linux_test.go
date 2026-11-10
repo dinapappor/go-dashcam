@@ -1151,3 +1151,36 @@ func TestExportBufferInvalidFD(t *testing.T) {
 		t.Fatalf("filedescriptor on closed filedescriptor should be -1, got %d", retfd)
 	}
 }
+
+func TestSyncBufferNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+
+	defer file.Close()
+
+	err = SyncBuffer(int(file.Fd()), DmaBufSyncStart|DmaBufSyncRead|DmaBufSyncWrite)
+
+	if !errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl, got %v", err)
+	}
+}
+
+func TestSyncBufferInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	err = SyncBuffer(int(fd), DmaBufSyncStart|DmaBufSyncRead|DmaBufSyncWrite)
+
+	if !errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor, got %v", err)
+	}
+}

@@ -39,7 +39,7 @@ func InputArgs(cfg InputConfig) ([]string, error) {
 	case YUV422:
 		inputArgs = append(inputArgs, "yuvj422p")
 	case YUV420:
-		inputArgs = append(inputArgs, "yuv420p")
+		inputArgs = append(inputArgs, "yuvj420p")
 	default:
 		return nil, fmt.Errorf("Unknown pixelformat")
 	}

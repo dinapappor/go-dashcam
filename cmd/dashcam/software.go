@@ -81,6 +81,15 @@ func wrapYU12(data []byte, format v4l2.V4L2Format) (*image.YCbCr, error) {
 	width := int(format.PixFormat.Width)
 	height := int(format.PixFormat.Height)
 	yStride := int(format.PixFormat.Bytesperline)
+
+	if yStride < width {
+		return nil, fmt.Errorf("YU12 stride %d is smaller than width %d", yStride, width)
+	}
+
+	if yStride%2 != 0 {
+		return nil, fmt.Errorf("YU12 stride %d is odd", yStride)
+	}
+
 	cStride := yStride / 2
 	ySize := yStride * height
 	cSize := cStride * ((height + 1) / 2)

@@ -22,7 +22,7 @@ func NewEncoder(inputArgs []string, outputArgs []string) (*Encoder, error) {
 		return nil, fmt.Errorf("Could not lookup ffmpeg path: %w", err)
 	}
 
-	args := []string{"-hide_banner"}
+	args := []string{"-hide_banner", "-loglevel", "error"}
 	args = append(args, inputArgs...)
 	args = append(args, "-i", "pipe:0")
 	args = append(args, outputArgs...)

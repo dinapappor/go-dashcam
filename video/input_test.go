@@ -115,3 +115,24 @@ func TestInputConfigPixelFormatIncorect(t *testing.T) {
 		t.Fatalf("Expected inputArgs to be nil if PixelFormat is incorrect")
 	}
 }
+
+func TestH264InputArgsFrameRateZero(t *testing.T) {
+	res, err := H264InputArgs(0)
+	if err == nil {
+		t.Fatalf("A framerate of zero should fail")
+	}
+	if res != nil {
+		t.Fatalf("The resulting string slice should be nil")
+	}
+}
+
+func TestH264InputArgsSuccess(t *testing.T) {
+	res, err := H264InputArgs(30)
+	if err != nil {
+		t.Fatalf("We do not expect an error for a correct framerate, got: %v", err)
+	}
+	want := []string{"-f", "h264", "-framerate", "30"}
+	if !slices.Equal(want, res) {
+		t.Fatalf("The resulting string slice differs. Got %v, want %v", res, want)
+	}
+}

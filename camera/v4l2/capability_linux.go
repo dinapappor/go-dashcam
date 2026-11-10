@@ -82,7 +82,6 @@ func ValidateFrameInterval(orig V4L2Fract, actual V4L2Fract) bool {
 	right := uint64(actual.Numerator) * uint64(orig.Denominator)
 
 	if left != right {
-		log.Printf("left and right does not match")
 		errors++
 	}
 	if orig.Numerator == 0 {
@@ -96,12 +95,12 @@ func ValidateFrameInterval(orig V4L2Fract, actual V4L2Fract) bool {
 	}
 
 	if orig.Denominator == 0 {
-		log.Printf("Requested numerator must be non-zero")
+		log.Printf("Requested denominator must be non-zero")
 		errors++
 	}
 
 	if actual.Denominator == 0 {
-		log.Printf("Actual numerator is zero")
+		log.Printf("Actual denominator is zero")
 		errors++
 	}
 
@@ -199,7 +198,13 @@ func SetVideoCaptureStreamParams(fd uintptr, numerator uint32, denominator uint3
 	}
 
 	if !ValidateFrameInterval(origParams.Capture.TimePerFrame, requestedParams.Capture.TimePerFrame) {
-		return V4L2StreamParm{}, fmt.Errorf("TimePerFrame validation failed")
+		return V4L2StreamParm{}, fmt.Errorf(
+			"frame interval mismatch: requested %d/%d, camera returned %d/%d",
+			origParams.Capture.TimePerFrame.Numerator,
+			origParams.Capture.TimePerFrame.Denominator,
+			requestedParams.Capture.TimePerFrame.Numerator,
+			requestedParams.Capture.TimePerFrame.Denominator,
+		)
 	}
 	return requestedParams, nil
 }

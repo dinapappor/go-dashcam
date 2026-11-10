@@ -2,21 +2,6 @@
 
 A Go learning project for a dashcam. Captures camera frames through direct Linux V4L2 ioctl calls and pipes frames to ffmpeg.
 
-## Run
-
-Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera supporting MJPEG at 1280×720 and 30 fps.
-
-```sh
-go run ./cmd/dashcam -config /path/to/config_file.json
-```
-
-or with Raspberry pi's (3, 4 and zero 2w)
-```
-LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam -config /path/to/config_file.json
-```
-
-Should `-config` be omitted it will default to try to load `dashcam_config.json` from the same PWD as the dashcam is running from
-
 ## Current config file format
 
 Subject to change - for instance if we have multiple cameras in the future.
@@ -69,8 +54,33 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 
 ## Building it
 
-On normal platforms do `go build  ./cmd/dashcam`. On Raspberry pi's (with libcamera) do `go build -tags libcamera ./cmd/dashcam`
+Normally
+```sh
+go build  ./cmd/dashcam
+```
 
+On Raspberry pi's (with libcamera) do
+```sh
+go build -tags libcamera ./cmd/dashcam
+```
+
+The libcamera tag makes the program open and control the camera through libc, so the `LD_PRELOAD` compat library can intercept those calls.
+
+## Run
+
+Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera supporting MJPEG at 1280×720 and 30 fps. Or raspberry Pi with CSI cameras.
+
+
+```sh
+go run ./cmd/dashcam -config /path/to/config_file.json
+```
+
+or with Raspberry pi's (3, 4 and zero 2w)
+```sh
+LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam -config /path/to/config_file.json
+```
+
+Should `-config` be omitted it will default to try to load `dashcam_config.json` from the same PWD as the dashcam is running from
 
 ## Tests
 
@@ -90,7 +100,11 @@ second backend or OS needs them.
 go-dashcam/
 ├── cmd/
 │   └── dashcam/
-│       └── main.go
+│       ├── main.go
+│       ├── camera.go
+│       ├── hardware.go
+│       ├── software.go
+│       └── profile.go
 │
 ├── config/
 │   └── config.go
@@ -100,10 +114,13 @@ go-dashcam/
 │   └── v4l2/
 │
 ├── overlay/
-│   └── overlay.go
+│   ├── overlay.go
+│   └── blend.go
 │
 ├── video/
-│   └── ffmpeg.go
+│   ├── ffmpeg.go
+│   ├── input.go
+│   └── v4l2m2m/
 │
 ├── recording/
 │   ├── recording.go
@@ -120,7 +137,7 @@ go-dashcam/
 
 `main` connects the packages. Lower-level packages do not import `main` or the
 application-wide `config` package. Overlay drawing stays independent of the
-encoder so it can support both decoded MJPEG and packed YUYV frames.
+encoder so it can support both decoded MJPEG and packed YU12 frames.
 
 ## Milestones
 
@@ -142,11 +159,12 @@ encoder so it can support both decoded MJPEG and packed YUYV frames.
 
 ## Targets
 
-Development currently uses Linux. Raspberry Pi 4 and 5 are the first deployment targets; the complete pipeline still needs benchmarking on both.
+Development currently uses Linux. Raspberry Pi 2W and Raspberry Pi 4 are the first targets. Raspberry Pi5 needs software mode (no h264 encoder block)
 
 Long-term goals include Linux and FreeBSD on ARM64, AMD64, and RISC-V. These are intended targets, not verified support.
 
 ## Supported platforms
 
-- Raspberry Pi {3, 4, zero 2w} - at 1080p with 30 fps (~7% CPU usage in total)
+- Raspberry Pi zero 2w - at 1080p with 30 fps (~7% CPU usage in total). Pi 3 expected to work as well since it has the same CPU and even more ram.
 - amd64/x86_64 with usb webcamera.
+

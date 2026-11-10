@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"github.com/dinapappor/go-dashcam/camera/v4l2"
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/overlay"
 	"github.com/dinapappor/go-dashcam/recording"
@@ -62,11 +60,14 @@ func main() {
 		return
 	}
 
+	// see if we have hardware mode (v4l2m2m). This is /dev/video11 on the pi's
+	hardware := dashcamConfig.VideoConfig.Encoder == "v4l2m2m"
+
 	// open the video device
-	device, err := v4l2.Open(dashcamConfig.VideoConfig.VideoSource)
+	device, requestedFormat, err := openCamera(dashcamConfig.VideoConfig, hardware)
 
 	if err != nil {
-		log.Printf("%s: %s", dashcamConfig.VideoConfig.VideoSource, err)
+		log.Printf("Unable to open camera: %v", err)
 		return
 	}
 
@@ -75,115 +76,6 @@ func main() {
 			log.Printf("Unable to close device: %v", err)
 		}
 	}()
-
-	deviceCapability, err := v4l2.QueryCapability(device.Fd())
-
-	if err != nil {
-		log.Printf("Unable to query for device Capabilities, err:%s", err)
-		return
-	}
-
-	driverName, err := v4l2.ConvertByteToString(deviceCapability.Driver[:])
-
-	if err != nil {
-		log.Printf("Could not get driver name, err: %s", err)
-		return
-	}
-
-	cameraName, err := v4l2.ConvertByteToString(deviceCapability.Card[:])
-
-	if err != nil {
-		log.Printf("Could not get camera name, err: %s", err)
-		return
-	}
-
-	busInfo, err := v4l2.ConvertByteToString(deviceCapability.BusInfo[:])
-
-	if err != nil {
-		log.Printf("Could not get bus info, err: %s", err)
-		return
-	}
-
-	fmt.Printf("Video device: %s (%s), using %s driver on %s\n", cameraName, dashcamConfig.VideoConfig.VideoSource, driverName, busInfo)
-
-	capabilities := v4l2.SelectCapabilities(deviceCapability)
-
-	// Check for video capture flag
-	if !v4l2.HasCapability(capabilities, v4l2.VideoCapture) {
-		log.Printf("We do not have video capture capabilities")
-		return
-	}
-
-	// Check for streaming capabilities.
-	// This means buffers that we queue and requeue later
-	if !v4l2.HasCapability(capabilities, v4l2.StreamingFlag) {
-		log.Printf("We do not have streaming capabilities")
-		return
-	}
-
-	// To hold which format we request from camera
-	var requestedFourCC uint32
-	switch dashcamConfig.VideoConfig.PixelFormat {
-	case "MJPG":
-		requestedFourCC = v4l2.PixFmtMJPEG
-	case "YU12":
-		requestedFourCC = v4l2.PixFmtYUV420
-	}
-
-	requestedFormat, err := v4l2.SetVideoCaptureFormat(
-		device.Fd(),
-		dashcamConfig.VideoConfig.Width,
-		dashcamConfig.VideoConfig.Height,
-		requestedFourCC,
-	)
-
-	if err != nil {
-		log.Printf("Unable to set format: %s", err)
-		return
-	}
-
-	log.Printf("We got format: %s, width:%d, height: %d",
-		v4l2.DecodeFourCC(requestedFormat.PixFormat.PixelFormat),
-		requestedFormat.PixFormat.Width,
-		requestedFormat.PixFormat.Height)
-
-	streamParams, err := v4l2.QueryVideoCaptureStreamParams(device.Fd())
-	if err != nil {
-		log.Printf("Unable to query for stream params, got: %s", err)
-		return
-	}
-
-	if !v4l2.HasCapability(streamParams.Capture.Capability, v4l2.CapTimePerFrame) {
-		log.Printf("We do not have TimePerFrame capability")
-		return
-	}
-
-	_, err = v4l2.SetVideoCaptureStreamParams(device.Fd(), 1, dashcamConfig.VideoConfig.FrameRate)
-
-	if err != nil {
-		log.Printf("Unable to set stream params, got %s", err)
-		return
-	}
-
-	// see if we have hardware mode (v4l2m2m). This is /dev/video11 on the pi's
-	hardware := dashcamConfig.VideoConfig.Encoder == "v4l2m2m"
-
-	err = device.SetupBuffers(4)
-
-	if err != nil {
-		log.Printf("Unable to setup buffers: %v", err)
-		return
-	}
-
-	if hardware {
-
-		err := device.ExportBuffers()
-
-		if err != nil {
-			log.Printf("Could not setup export buffers: %v", err)
-			return
-		}
-	}
 
 	mode := recording.Continuous
 

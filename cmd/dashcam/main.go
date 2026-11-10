@@ -233,7 +233,7 @@ func main() {
 
 	// Find a way to  make the pi use h264_v4l2m2m on pi3/pi4/pizero2w
 	if hardware {
-		outputArgs = append([]string{"-c:v", "copy"}, outputArgs...)
+		outputArgs = append([]string{"-c:v", "copy", "-bsf:v", "h264_metadata=video_full_range_flag=1"}, outputArgs...)
 	} else {
 		outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
 	}

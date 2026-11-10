@@ -11,12 +11,16 @@ import (
 )
 
 type Encoder struct {
-	pipe *os.File
-	cmd  *exec.Cmd
+	pipe         *os.File
+	cmd          *exec.Cmd
+	writeTimeout time.Duration
 }
 
 func NewEncoder(inputArgs []string, outputArgs []string) (*Encoder, error) {
 	encoder := Encoder{}
+
+	// Set encoder timeout by default
+	encoder.writeTimeout = 10 * time.Second
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return nil, fmt.Errorf("Could not lookup ffmpeg path: %w", err)
@@ -101,9 +105,9 @@ func (e *Encoder) Close() error {
 }
 
 func (e *Encoder) WriteFrame(data []byte) error {
-	// if we fail to return within 2 seconds that
+	// if we fail to return within 10 seconds that
 	// probably means ffmpeg stalled
-	err := e.pipe.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	err := e.pipe.SetWriteDeadline(time.Now().Add(e.writeTimeout))
 
 	if err != nil {
 		return fmt.Errorf("Unable to set write deadline: %w", err)

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func installFakeFFmpeg(t *testing.T, body string) {
@@ -149,6 +150,7 @@ func TestEncoderWriteStalled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to start fake ffmpeg: %v", err)
 	}
+	encoder.writeTimeout = 100 * time.Millisecond
 
 	err = encoder.WriteFrame(make([]byte, 1024*1024))
 	if !errors.Is(err, os.ErrDeadlineExceeded) {

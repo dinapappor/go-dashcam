@@ -40,6 +40,19 @@ func TestOutputArgs(t *testing.T) {
 			},
 		},
 		{
+			name: "segmented stream copy",
+			cfg:  Config{Mode: Segmented, SegmentDuration: 10 * time.Second, OutputDirectory: "videos", FrameRate: 30, StreamCopy: true},
+			want: []string{
+				"-n",
+				"-f", "segment",
+				"-segment_time", "10",
+				"-segment_time_delta", "0.016666666666666666",
+				"-reset_timestamps", "1",
+				"-strftime", "1",
+				"videos/dashcam_%Y%m%d-%H%M%S.mp4",
+			},
+		},
+		{
 			name: "segmented fractional duration",
 			cfg:  Config{Mode: Segmented, SegmentDuration: 1500 * time.Millisecond, OutputDirectory: "videos", FrameRate: 25},
 			want: []string{

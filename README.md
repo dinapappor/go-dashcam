@@ -44,6 +44,7 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 
 | Field | Meaning |
 |---|---|
+| `dashcam_title` | The title of the dashcam in the top left corner. |
 | `output_directory` | Where recordings are saved. Defaults to `videos`; created if it does not exist. |
 | `segmented` | `true` splits recordings into `segment_duration` pieces; `false` records one continuous file. |
 | `segment_duration` | Go duration such as `10s`, `1.5s` or `2m`. Required when `segmented` is `true`. |
@@ -68,19 +69,22 @@ The libcamera tag makes the program open and control the camera through libc, so
 
 ## Run
 
-Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera supporting MJPEG at 1280×720 and 30 fps. Or raspberry Pi with CSI cameras.
+Requires Linux, Go matching `go.mod`, FFmpeg with `libx264`, and access to a V4L2 camera that supports configured format, size and framerate.
 
+On Raspberry PI you also need `libcamera-v4l2` which provides `/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so`
 
 ```sh
 go run ./cmd/dashcam -config /path/to/config_file.json
 ```
 
-or with Raspberry pi's (3, 4 and zero 2w)
+Or with Raspberry pi's (pi zero 2w is tested, raspberry pi 3 and 4 likely works but are untested)
 ```sh
 LD_PRELOAD=/usr/libexec/aarch64-linux-gnu/libcamera/v4l2-compat.so ./dashcam -config /path/to/config_file.json
 ```
 
 Should `-config` be omitted it will default to try to load `dashcam_config.json` from the same PWD as the dashcam is running from
+
+Running with `-cpuprofile cpu.pprof` will record CPU profile for performance debugging.
 
 ## Tests
 

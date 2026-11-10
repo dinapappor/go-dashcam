@@ -1111,3 +1111,43 @@ func TestStreamOffInvalidFD(t *testing.T) {
 		t.Fatalf("This should fail with bad file descriptor")
 	}
 }
+
+func TestExportBufferNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	defer file.Close()
+
+	fd, err := ExportBuffer(file.Fd(), 0)
+
+	if !errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("This should fail with inappropriate ioctl: %v", err)
+	}
+	if fd != -1 {
+		t.Fatalf("filedescriptor on non-v4l2 device should be -1, got %d", fd)
+	}
+}
+
+func TestExportBufferInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+
+	if err != nil {
+		t.Fatalf("Unable to open temporary file")
+	}
+
+	fd := file.Fd()
+	file.Close()
+
+	retfd, err := ExportBuffer(fd, 0)
+
+	if !errors.Is(err, syscall.EBADF) {
+		t.Fatalf("This should fail with bad file descriptor")
+	}
+
+	if retfd != -1 {
+		t.Fatalf("filedescriptor on closed filedescriptor should be -1, got %d", retfd)
+	}
+}

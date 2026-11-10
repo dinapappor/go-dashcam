@@ -52,6 +52,27 @@ func TestEncoderWriteAndClose(t *testing.T) {
 	}
 }
 
+func TestEncoderWriteReturnsLength(t *testing.T) {
+	installFakeFFmpeg(t, "cat > /dev/null")
+
+	data := make([]byte, 1024)
+
+	encoder, err := NewEncoder([]string{"-f", "mjpeg"}, []string{"out.mp4"})
+	if err != nil {
+		t.Fatalf("Unable to start fake ffmpeg: %v", err)
+	}
+
+	n, err := encoder.Write(data)
+	if err != nil {
+		t.Errorf("Write should succeed, got %v", err)
+	}
+	encoder.Close()
+
+	if n != len(data) {
+		t.Errorf("Bytes written should be equal to length of data send. Got:%d wanted %d", n, len(data))
+	}
+}
+
 func TestEncoderCloseReportsExitStatus(t *testing.T) {
 	installFakeFFmpeg(t, "cat > /dev/null\nexit 3")
 
@@ -91,6 +112,33 @@ func TestEncoderWriteAfterExit(t *testing.T) {
 
 	if !errors.Is(err, syscall.EPIPE) {
 		t.Errorf("WriteFrame should fail with EPIPE after ffmpeg exits, got %v", err)
+	}
+}
+
+func TestEncoderWriteErrorAfterExit(t *testing.T) {
+	installFakeFFmpeg(t, "exit 0")
+
+	encoder, err := NewEncoder(nil, nil)
+	if err != nil {
+		t.Fatalf("Unable to start fake ffmpeg: %v", err)
+	}
+	defer encoder.Close()
+
+	data := make([]byte, 64*1024)
+	var n int
+	for i := 0; i < 100; i++ {
+		n, err = encoder.Write(data)
+		if err != nil {
+			break
+		}
+	}
+
+	if !errors.Is(err, syscall.EPIPE) {
+		t.Errorf("WriteFrame should fail with EPIPE after ffmpeg exits, got %v", err)
+	}
+
+	if n != 0 {
+		t.Errorf("Expted written bytes to be zero, got %d", n)
 	}
 }
 

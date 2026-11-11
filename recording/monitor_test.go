@@ -40,6 +40,11 @@ func TestMonitorIntervalNonExistingDir(t *testing.T) {
 }
 
 func TestMonitorCancellation(t *testing.T) {
+	freeSpace = func(path string) (uint64, error) {
+		return MinSpace, nil
+	}
+	t.Cleanup(func() { freeSpace = FreeSpace })
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -51,6 +56,11 @@ func TestMonitorCancellation(t *testing.T) {
 }
 
 func TestMonitorCancellationWhileRunning(t *testing.T) {
+	freeSpace = func(path string) (uint64, error) {
+		return MinSpace, nil
+	}
+	t.Cleanup(func() { freeSpace = FreeSpace })
+
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

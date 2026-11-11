@@ -5,9 +5,11 @@ import (
 	"os"
 )
 
+var freeSpace = FreeSpace
+
 func Cleanup(path string) error {
 	for {
-		free, err := FreeSpace(path)
+		free, err := freeSpace(path)
 		if err != nil {
 			return fmt.Errorf("Could not check free space: %w", err)
 		}

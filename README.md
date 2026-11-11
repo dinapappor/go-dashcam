@@ -42,6 +42,25 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 }
 ```
 
+For a Raspberry Pi 5 you'd likely use the below config seeing that it doesn't have a hardware encoder (untested).
+
+```json
+{
+    "dashcam_title": "Andreas Dashcam",
+    "output_directory": "/path/to/storage",
+    "video_config": {
+        "video_source": "/dev/video0",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "segmented": true,
+        "segment_duration": "10s",
+        "pixel_format": "YU12",
+        "encoder": "software"
+    }
+}
+```
+
 | Field | Meaning |
 |---|---|
 | `dashcam_title` | The title of the dashcam in the top left corner. |

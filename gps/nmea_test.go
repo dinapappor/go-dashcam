@@ -533,3 +533,61 @@ func TestParseGGA(t *testing.T) {
 		})
 	}
 }
+
+func TestParseNMEA(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantKind string
+		wantErr  bool
+	}{
+		{
+			name:     "RMC",
+			input:    "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A",
+			wantKind: "RMC",
+		},
+		{
+			name:     "GGA",
+			input:    "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47",
+			wantKind: "GGA",
+		},
+		{
+			name:     "GNMRC", // combined GPS, for instance GPS+Galilelo or GPS+Glonass
+			input:    "$GNRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*74",
+			wantKind: "RMC",
+		},
+		{
+			name:    "unsupported-sentence",
+			input:   "$GPGSV,1,1,00*79",
+			wantErr: true,
+		},
+		{
+			name:    "invalid-sentence-name",
+			input:   "$GPRM,1*15",
+			wantErr: true,
+		},
+		{
+			name:    "invalid checksum",
+			input:   "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6B",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseNMEA(tt.input)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				return
+			}
+
+			if got.Kind() != tt.wantKind {
+				t.Errorf("Kind: got %q, want %q", got.Kind(), tt.wantKind)
+			}
+		})
+	}
+}

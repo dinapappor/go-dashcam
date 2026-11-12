@@ -416,7 +416,7 @@ func TestParseGGA(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "sattelites-negative",
+			name: "satellites-negative",
 			input: []string{
 				"123519",
 				"4807.038",
@@ -436,7 +436,7 @@ func TestParseGGA(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "sattelites-empty",
+			name: "satellites-empty",
 			input: []string{
 				"123519",
 				"4807.038",
@@ -521,7 +521,7 @@ func TestParseGGA(t *testing.T) {
 			}
 
 			if got.Satellites != tt.want.Satellites {
-				t.Fatalf("Wrong number of sattelites was returned, expected: %d, got: %d", tt.want.Satellites, got.Satellites)
+				t.Fatalf("Wrong number of satellites was returned, expected: %d, got: %d", tt.want.Satellites, got.Satellites)
 			}
 
 			if math.Abs(got.HDOP-tt.want.HDOP) > 1e-6 {

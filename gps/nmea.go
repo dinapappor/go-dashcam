@@ -253,11 +253,11 @@ func parseGGA(fields []string) (GGA, error) {
 	satellites, err := strconv.Atoi(fields[6])
 
 	if err != nil {
-		return GGA{}, fmt.Errorf("Could not parse the number of sattelites: %w", err)
+		return GGA{}, fmt.Errorf("Could not parse the number of satellites: %w", err)
 	}
 
 	if satellites < 0 {
-		return GGA{}, fmt.Errorf("Cannot have negative number of sattelites, got %d", satellites)
+		return GGA{}, fmt.Errorf("Cannot have negative number of satellites, got %d", satellites)
 	}
 
 	gga.Satellites = satellites

@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+type FixQuality int
+
+const (
+	FIX_NOT_VALID        FixQuality = iota // self-explaining
+	FIX_VALID                              // self-explaining
+	DIFFERENTIAL_GPS_FIX                   //SBAS/EGNOS, corrected data (not with rtk though)
+	PPS_FIX                                // precise timing
+	RTK_FIXED                              // for centimeter accuracy - not applicable here
+	RTK_FLOAT                              // for decimeter accuracy
+	INS                                    // dead reckoning
+	MANUAL                                 // manual input
+	SIMULATION                             // simulation mode
+)
+
 type Sentence interface {
 	Kind() string
 }
@@ -22,7 +36,7 @@ type RMC struct {
 }
 
 type GGA struct {
-	FixQuality int // 0 = no fix
+	FixQuality FixQuality
 	Satellites int
 	HDOP       float64
 	Altitude   float64
@@ -194,9 +208,11 @@ func parseRMC(fields []string) (RMC, error) {
 			return RMC{}, fmt.Errorf("Unable to parse bearing:%s, %w", fields[7], err)
 		}
 	}
+
 	rmc.Bearing = bearing
 
 	timestamp, err := time.Parse("020106150405", fields[8]+fields[0])
+
 	if err != nil {
 		return RMC{}, fmt.Errorf("Could not parse time %q: %w", fields[8]+fields[0], err)
 	}
@@ -207,5 +223,59 @@ func parseRMC(fields []string) (RMC, error) {
 }
 
 func parseGGA(fields []string) (GGA, error) {
-	return GGA{}, fmt.Errorf("not implemented")
+	if len(fields) < 14 {
+		return GGA{}, fmt.Errorf("Not enought fields in GGA sentence, got %d, expected at least 14", len(fields))
+	}
+
+	gga := GGA{}
+
+	fix_status, err := strconv.Atoi(fields[5])
+
+	if err != nil {
+		return GGA{}, fmt.Errorf("Could not parse signal-fix: %w", err)
+	}
+
+	quality := FixQuality(fix_status)
+
+	// quality out of range is invalid and we return error
+	if quality < FIX_NOT_VALID || quality > SIMULATION {
+		return GGA{}, fmt.Errorf("Fix quality unknown, got %d", quality)
+	}
+
+	// This is not an error, no fix is a valid status
+	if quality == FIX_NOT_VALID {
+		gga.FixQuality = quality
+		return gga, nil
+	}
+
+	gga.FixQuality = quality
+
+	satellites, err := strconv.Atoi(fields[6])
+
+	if err != nil {
+		return GGA{}, fmt.Errorf("Could not parse the number of sattelites: %w", err)
+	}
+
+	if satellites < 0 {
+		return GGA{}, fmt.Errorf("Cannot have negative number of sattelites, got %d", satellites)
+	}
+
+	gga.Satellites = satellites
+
+	hdop, err := strconv.ParseFloat(fields[7], 64)
+
+	if err != nil {
+		return GGA{}, fmt.Errorf("Could not parse hdop: %w", err)
+	}
+
+	gga.HDOP = hdop
+
+	altitude, err := strconv.ParseFloat(fields[8], 64)
+
+	if err != nil {
+		return GGA{}, fmt.Errorf("Could not parse altitude: %w", err)
+	}
+	gga.Altitude = altitude
+
+	return gga, nil
 }

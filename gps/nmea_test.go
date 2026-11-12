@@ -100,10 +100,10 @@ func TestParseCoordinate(t *testing.T) {
 
 func TestParseRMC(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      []string
-		want       RMC
-		wantErr    bool
+		name    string
+		input   []string
+		want    RMC
+		wantErr bool
 	}{
 		{
 			name: "success",
@@ -203,7 +203,7 @@ func TestParseRMC(t *testing.T) {
 				"003.1",
 				"W",
 			},
-			want: RMC{Valid: false},
+			want:    RMC{Valid: false},
 			wantErr: false,
 		},
 		{
@@ -255,11 +255,11 @@ func TestParseRMC(t *testing.T) {
 				return
 			}
 
-			if got.Valid != tt.want.Valid{
+			if got.Valid != tt.want.Valid {
 				t.Fatalf("Valid check failed, expected: %t, got:%t", tt.want.Valid, got.Valid)
 			}
 
-			if ! got.Time.Equal(tt.want.Time) {
+			if !got.Time.Equal(tt.want.Time) {
 				t.Fatalf("Did not get correct time, expected: %v, got: %v", tt.want.Time, got.Time)
 			}
 			// check difference, if it's more than 10 cm off (1e-6)
@@ -275,6 +275,260 @@ func TestParseRMC(t *testing.T) {
 			}
 			if math.Abs(got.Bearing-tt.want.Bearing) > 1e-6 {
 				t.Errorf("Bearing: got %f, want %f", got.Bearing, tt.want.Bearing)
+			}
+		})
+	}
+}
+
+func TestParseGGA(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   []string
+		want    GGA
+		wantErr bool
+	}{
+		{
+			name: "success",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"1",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			want: GGA{
+				FixQuality: FIX_VALID,
+				Satellites: 8,
+				HDOP:       0.9,
+				Altitude:   545.4,
+			},
+			wantErr: false,
+		},
+		{
+			name: "no-fix-no-error",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"0",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			want: GGA{
+				FixQuality: FIX_NOT_VALID,
+			},
+			wantErr: false,
+		},
+		{
+			name: "too few fields",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"1",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "quality-out-of-bounds-upwards",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"9",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "quality-out-of-bounds-negative",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"-1",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "quality-empty",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"",
+				"08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "sattelites-negative",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"-1",
+				"-08",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "sattelites-empty",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"-1",
+				"",
+				"0.9",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "hdop-bad",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"-1",
+				"",
+				"1",
+				"545.4",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			wantErr: true,
+		},
+		{
+			name: "altitude-bad",
+			input: []string{
+				"123519",
+				"4807.038",
+				"N",
+				"01131.000",
+				"E",
+				"1",
+				"08",
+				"0.9",
+				"roev",
+				"M",
+				"46.9",
+				"M",
+				"",
+				"",
+			},
+			want: GGA{
+				FixQuality: FIX_VALID,
+				Satellites: 8,
+				HDOP:       0.9,
+				Altitude:   545.4,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseGGA(tt.input)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			// if we expect an error, there's nothing else to check here
+			if tt.wantErr {
+				return
+			}
+
+			if got.FixQuality != tt.want.FixQuality {
+				t.Fatalf("FixQuality check failed, expected: %d, got:%d", tt.want.FixQuality, got.FixQuality)
+			}
+
+			if got.Satellites != tt.want.Satellites {
+				t.Fatalf("Wrong number of sattelites was returned, expected: %d, got: %d", tt.want.Satellites, got.Satellites)
+			}
+
+			if math.Abs(got.HDOP-tt.want.HDOP) > 1e-6 {
+				t.Errorf("HDOP mismatch, expected: %f, got: %f", tt.want.HDOP, got.HDOP)
+			}
+			if math.Abs(got.Altitude-tt.want.Altitude) > 1e-6 {
+				t.Errorf("Altitude mismatch, expected: %f, got: %f", tt.want.Altitude, got.Altitude)
 			}
 		})
 	}

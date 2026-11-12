@@ -1,42 +1,54 @@
 package overlay
 
 import (
-	"image"
 	"testing"
 )
 
 func TestRenderTitleDimensions(t *testing.T) {
-	// Face7x13 uses seven pixels per character. Padding adds 10 by 5.
-	tests := []struct {
-		name  string
-		title string
-		width int
-	}{
-		{"empty title", "", 10},
-		{"one character", "A", 17},
-		{"multiple characters", "Dashcam", 59},
-		{"includes space", "Go Cam", 52},
+	titles := []string{"", "A", "Go Cam", "Dashcam"}
+	var widths []int
+	height := 0
+	for _, title := range titles {
+		pixels, alpha, err := RenderTitle(Config{Title: title, FrameHeight: 720})
+		if err != nil {
+			t.Fatalf("Error creating title %q: %v", title, err)
+		}
+		if pixels == nil || alpha == nil {
+			t.Fatalf("RenderTitle(%q) returned a nil image", title)
+		}
+		if pixels.Bounds() != alpha.Bounds() {
+			t.Errorf("%q: brightness bounds %v differ from alpha bounds %v", title, pixels.Bounds(), alpha.Bounds())
+		}
+		if height == 0 {
+			height = pixels.Bounds().Dy()
+		}
+		if pixels.Bounds().Dy() != height {
+			t.Errorf("%q: height = %d, want %d like the other titles", title, pixels.Bounds().Dy(), height)
+		}
+		widths = append(widths, pixels.Bounds().Dx())
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pixels, alpha := RenderTitle(Config{Title: tt.title})
-			if pixels == nil || alpha == nil {
-				t.Fatal("RenderTitle returned a nil image")
-			}
-			want := image.Rect(0, 0, tt.width, 18)
-			if pixels.Bounds() != want {
-				t.Errorf("brightness bounds = %v, want %v", pixels.Bounds(), want)
-			}
-			if alpha.Bounds() != want {
-				t.Errorf("alpha bounds = %v, want %v", alpha.Bounds(), want)
-			}
-		})
+	if widths[0] != 10 {
+		t.Errorf("empty title width = %d, want 10 (padding only)", widths[0])
+	}
+	for i := 1; i < len(widths); i++ {
+		if widths[i] <= widths[i-1] {
+			t.Errorf("%q width %d is not wider than %q width %d", titles[i], widths[i], titles[i-1], widths[i-1])
+		}
+	}
+	if height <= 5 {
+		t.Errorf("height = %d, want more than the 5 pixel padding", height)
 	}
 }
 
 func TestRenderTitleBackgroundPadding(t *testing.T) {
-	pixels, alpha := RenderTitle(Config{Title: "Andreas Dashcam"})
+	pixels, alpha, err := RenderTitle(Config{Title: "Andreas Dashcam", FrameHeight: 720})
+
+	if err != nil {
+		t.Fatalf("Error creating title: %v", err)
+	}
+
 	bounds := pixels.Bounds()
+
 	// Check the whole outer border, including all four corners.
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -54,7 +66,12 @@ func TestRenderTitleBackgroundPadding(t *testing.T) {
 }
 
 func TestRenderTitleWhiteText(t *testing.T) {
-	pixels, alpha := RenderTitle(Config{Title: "Andreas Dashcam"})
+	pixels, alpha, err := RenderTitle(Config{Title: "Andreas Dashcam", FrameHeight: 720})
+
+	if err != nil {
+		t.Fatalf("Error creating title: %v", err)
+	}
+
 	whitePixels := 0
 	for y := 0; y < pixels.Bounds().Dy(); y++ {
 		for x := 0; x < pixels.Bounds().Dx(); x++ {
@@ -71,7 +88,9 @@ func TestRenderTitleWhiteText(t *testing.T) {
 					t.Errorf("black background at (%d, %d) has alpha %d, want 128", x, y, opacity)
 				}
 			default:
-				t.Errorf("brightness at (%d, %d) = %d, want 0 or 255 for the bitmap font", x, y, brightness)
+				if opacity < 128 {
+					t.Errorf("anti-aliased edge at (%d, %d) has alpha %d, want 128 to 255", x, y, opacity)
+				}
 			}
 		}
 	}
@@ -81,7 +100,12 @@ func TestRenderTitleWhiteText(t *testing.T) {
 }
 
 func TestRenderTitleEmptyText(t *testing.T) {
-	pixels, alpha := RenderTitle(Config{Title: ""})
+	pixels, alpha, err := RenderTitle(Config{Title: "", FrameHeight: 720})
+
+	if err != nil {
+		t.Fatalf("Error creating title: %v", err)
+	}
+
 	for y := 0; y < pixels.Bounds().Dy(); y++ {
 		for x := 0; x < pixels.Bounds().Dx(); x++ {
 			if got := pixels.GrayAt(x, y).Y; got != 0 {

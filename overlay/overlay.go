@@ -1,18 +1,44 @@
 package overlay
 
 import (
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
-	"golang.org/x/image/math/fixed"
+	"fmt"
 	"image"
+
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/gofont/gomono"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/math/fixed"
 )
 
 type Config struct {
-	Title string
+	Title       string
+	FrameHeight int // to calculate box height and font size
 }
 
-func RenderTitle(cfg Config) (*image.Gray, *image.Alpha) {
-	face := basicfont.Face7x13
+func RenderTitle(cfg Config) (*image.Gray, *image.Alpha, error) {
+	if cfg.FrameHeight <= 0 {
+		return nil, nil, fmt.Errorf("Cant calculate font size without frame height")
+	}
+	// Calculate font size from frame height
+	fontSize := float64(cfg.FrameHeight) * 0.02
+
+	gomonofont, err := opentype.Parse(gomono.TTF)
+	if err != nil {
+		// we return nil because image.gray and alpha are pointers
+		return nil, nil, fmt.Errorf("Error loading font: %w", err)
+	}
+	face, err := opentype.NewFace(
+		gomonofont,
+		&opentype.FaceOptions{
+			Size: fontSize,
+			DPI:  72,
+		},
+	)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("Unable to create new face: %w", err)
+	}
+
 	textWidth := font.MeasureString(face, cfg.Title).Ceil()
 
 	// metrics holds the fonts measurements
@@ -48,5 +74,5 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha) {
 	}
 
 	textDrawer.DrawString(cfg.Title)
-	return pixels, alpha
+	return pixels, alpha, nil
 }

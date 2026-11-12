@@ -49,9 +49,16 @@ func main() {
 		return
 	}
 
-	overlayConfig := overlay.Config{Title: dashcamConfig.DashcamTitle}
+	overlayConfig := overlay.Config{
+		Title:       dashcamConfig.DashcamTitle,
+		FrameHeight: int(dashcamConfig.VideoConfig.Height),
+	}
 
-	dashcamTitleImageGray, dashcamTitleImageAlpha := overlay.RenderTitle(overlayConfig)
+	dashcamTitleImageGray, dashcamTitleImageAlpha, err := overlay.RenderTitle(overlayConfig)
+
+	if err != nil {
+		log.Printf("Unable to create dashcam title: %v", err)
+	}
 
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
 

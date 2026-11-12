@@ -41,7 +41,7 @@ func recordSoftware(ctx context.Context, device *v4l2.Device, encoder *video.Enc
 			return err
 		}
 
-		overlay.BlendTitle(ycbcr.Y, ycbcr.YStride, ycbcr.Rect.Dx(), ycbcr.Rect.Dy(), titleGray, titleAlpha, 0, 0)
+		overlay.BlendOverlay(ycbcr.Y, ycbcr.YStride, ycbcr.Rect.Dx(), ycbcr.Rect.Dy(), titleGray, titleAlpha, 0, 0)
 
 		rawFrame, err = video.PackFrame(rawFrame, ycbcr)
 		if err != nil {

@@ -39,7 +39,7 @@ func TestBlendPixelMaximumBrightness(t *testing.T) {
 	}
 }
 
-func TestBlendTitlePlacement(t *testing.T) {
+func TestBlendOverlayPlacement(t *testing.T) {
 	frame := []byte{100, 100, 100, 100, 100, 100}
 
 	title := image.NewGray(image.Rect(0, 0, 1, 1))
@@ -48,7 +48,7 @@ func TestBlendTitlePlacement(t *testing.T) {
 	alpha := image.NewAlpha(image.Rect(0, 0, 1, 1))
 	alpha.Pix[0] = 255
 
-	BlendTitle(frame, 3, 3, 2, title, alpha, 1, 0)
+	BlendOverlay(frame, 3, 3, 2, title, alpha, 1, 0)
 
 	want := []byte{100, 255, 100, 100, 100, 100}
 	if !slices.Equal(frame, want) {
@@ -56,7 +56,7 @@ func TestBlendTitlePlacement(t *testing.T) {
 	}
 }
 
-func TestBlendTitleRightEdge(t *testing.T) {
+func TestBlendOverlayRightEdge(t *testing.T) {
 	frame := []byte{100, 100, 100, 100, 100, 100}
 
 	title := image.NewGray(image.Rect(0, 0, 2, 1))
@@ -67,7 +67,7 @@ func TestBlendTitleRightEdge(t *testing.T) {
 	alpha.Pix[0] = 255
 	alpha.Pix[1] = 255
 
-	BlendTitle(frame, 3, 3, 2, title, alpha, 2, 0)
+	BlendOverlay(frame, 3, 3, 2, title, alpha, 2, 0)
 
 	want := []byte{100, 100, 255, 100, 100, 100}
 	if !slices.Equal(frame, want) {
@@ -75,7 +75,7 @@ func TestBlendTitleRightEdge(t *testing.T) {
 	}
 }
 
-func TestBlendTitleBottomEdge(t *testing.T) {
+func TestBlendOverlayBottomEdge(t *testing.T) {
 	frame := []byte{100, 100, 100, 100, 100, 100}
 
 	title := image.NewGray(image.Rect(0, 0, 1, 2))
@@ -86,7 +86,7 @@ func TestBlendTitleBottomEdge(t *testing.T) {
 	alpha.Pix[0] = 255
 	alpha.Pix[1] = 255
 
-	BlendTitle(frame, 3, 3, 2, title, alpha, 1, 1)
+	BlendOverlay(frame, 3, 3, 2, title, alpha, 1, 1)
 
 	want := []byte{100, 100, 100, 100, 255, 100}
 	if !slices.Equal(frame, want) {
@@ -107,7 +107,7 @@ func TestBlendPixelBlackBackground(t *testing.T) {
 	}
 }
 
-func TestBlendTitleFrameStride(t *testing.T) {
+func TestBlendOverlayFrameStride(t *testing.T) {
 	// Each row has three visible pixels and one padding byte.
 	frame := []byte{
 		100, 100, 100, 99,
@@ -116,7 +116,7 @@ func TestBlendTitleFrameStride(t *testing.T) {
 	title := &image.Gray{Pix: []byte{255, 255}, Stride: 1, Rect: image.Rect(0, 0, 1, 2)}
 	alpha := &image.Alpha{Pix: []byte{255, 255}, Stride: 1, Rect: image.Rect(0, 0, 1, 2)}
 
-	BlendTitle(frame, 4, 3, 2, title, alpha, 1, 0)
+	BlendOverlay(frame, 4, 3, 2, title, alpha, 1, 0)
 
 	want := []byte{
 		100, 255, 100, 99,
@@ -127,12 +127,12 @@ func TestBlendTitleFrameStride(t *testing.T) {
 	}
 }
 
-func TestBlendTitleMixedTransparency(t *testing.T) {
+func TestBlendOverlayMixedTransparency(t *testing.T) {
 	frame := []byte{100, 100, 100, 100}
 	title := &image.Gray{Pix: []byte{255, 255, 255, 0}, Stride: 4, Rect: image.Rect(0, 0, 4, 1)}
 	alpha := &image.Alpha{Pix: []byte{0, 255, 128, 128}, Stride: 4, Rect: image.Rect(0, 0, 4, 1)}
 
-	BlendTitle(frame, 4, 4, 1, title, alpha, 0, 0)
+	BlendOverlay(frame, 4, 4, 1, title, alpha, 0, 0)
 
 	want := []byte{100, 255, 177, 49}
 	if !slices.Equal(frame, want) {
@@ -140,7 +140,7 @@ func TestBlendTitleMixedTransparency(t *testing.T) {
 	}
 }
 
-func TestBlendTitleIndependentImageStrides(t *testing.T) {
+func TestBlendOverlayIndependentImageStrides(t *testing.T) {
 	frame := []byte{100, 100, 100, 100}
 	// Title rows are three bytes apart; alpha rows are four bytes apart.
 	// Padding must not be read as brightness or opacity.
@@ -153,7 +153,7 @@ func TestBlendTitleIndependentImageStrides(t *testing.T) {
 		Stride: 4, Rect: image.Rect(0, 0, 2, 2),
 	}
 
-	BlendTitle(frame, 2, 2, 2, title, alpha, 0, 0)
+	BlendOverlay(frame, 2, 2, 2, title, alpha, 0, 0)
 
 	want := []byte{200, 100, 80, 79}
 	if !slices.Equal(frame, want) {
@@ -161,7 +161,7 @@ func TestBlendTitleIndependentImageStrides(t *testing.T) {
 	}
 }
 
-func TestBlendTitleBoundaries(t *testing.T) {
+func TestBlendOverlayBoundaries(t *testing.T) {
 	tests := []struct {
 		name    string
 		offsetX int
@@ -179,7 +179,7 @@ func TestBlendTitleBoundaries(t *testing.T) {
 			title := &image.Gray{Pix: []byte{10, 20, 30, 40}, Stride: 2, Rect: image.Rect(0, 0, 2, 2)}
 			alpha := &image.Alpha{Pix: []byte{255, 255, 255, 255}, Stride: 2, Rect: image.Rect(0, 0, 2, 2)}
 
-			BlendTitle(frame, 2, 2, 2, title, alpha, tt.offsetX, tt.offsetY)
+			BlendOverlay(frame, 2, 2, 2, title, alpha, tt.offsetX, tt.offsetY)
 
 			if !slices.Equal(frame, tt.want) {
 				t.Errorf("frame = %v, want %v", frame, tt.want)
@@ -188,24 +188,24 @@ func TestBlendTitleBoundaries(t *testing.T) {
 	}
 }
 
-func TestBlendTitleEmptyTitle(t *testing.T) {
+func TestBlendOverlayEmptyTitle(t *testing.T) {
 	frame := []byte{100, 100}
 	title := image.NewGray(image.Rect(0, 0, 0, 0))
 	alpha := image.NewAlpha(title.Bounds())
 
-	BlendTitle(frame, 2, 2, 1, title, alpha, 0, 0)
+	BlendOverlay(frame, 2, 2, 1, title, alpha, 0, 0)
 
 	if want := []byte{100, 100}; !slices.Equal(frame, want) {
 		t.Errorf("frame = %v, want %v", frame, want)
 	}
 }
 
-func TestBlendTitleEmptyFrame(t *testing.T) {
+func TestBlendOverlayEmptyFrame(t *testing.T) {
 	frame := []byte{}
 	title := &image.Gray{Pix: []byte{255}, Stride: 1, Rect: image.Rect(0, 0, 1, 1)}
 	alpha := &image.Alpha{Pix: []byte{255}, Stride: 1, Rect: title.Bounds()}
 
-	BlendTitle(frame, 0, 0, 0, title, alpha, 0, 0)
+	BlendOverlay(frame, 0, 0, 0, title, alpha, 0, 0)
 
 	if len(frame) != 0 {
 		t.Errorf("frame = %v, want empty", frame)

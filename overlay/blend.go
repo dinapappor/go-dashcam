@@ -14,7 +14,7 @@ func blendPixel(frame uint8, title uint8, alpha uint8) uint8 {
 	return uint8((t*a + f*(255-a)) / 255)
 }
 
-func BlendTitle(y []byte, stride int, width int, height int, gray *image.Gray, alpha *image.Alpha, offsetX int, offsetY int) {
+func BlendOverlay(y []byte, stride int, width int, height int, gray *image.Gray, alpha *image.Alpha, offsetX int, offsetY int) {
 	titleWidth := gray.Bounds().Dx()
 	titleHeight := gray.Bounds().Dy()
 

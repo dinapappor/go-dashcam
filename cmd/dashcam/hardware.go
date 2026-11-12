@@ -91,7 +91,7 @@ func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m
 		if err != nil {
 			return fmt.Errorf("sync start: %w", err)
 		}
-		overlay.BlendTitle(frame.Data[:stride*height], stride, width, height, titleGray, titleAlpha, 0, 0)
+		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, titleGray, titleAlpha, 0, 0)
 		err = v4l2.SyncBuffer(exportFd, v4l2.DmaBufSyncEnd|rw)
 		if err != nil {
 			return fmt.Errorf("sync end: %w", err)

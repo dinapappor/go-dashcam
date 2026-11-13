@@ -14,7 +14,7 @@ import (
 	"github.com/dinapappor/go-dashcam/video"
 )
 
-func recordSoftware(ctx context.Context, device *v4l2.Device, encoder *video.Encoder, format v4l2.V4L2Format, cameraPixelFormat string, inputPixelFormat video.PixelFormat, titleGray *image.Gray, titleAlpha *image.Alpha) error {
+func recordSoftware(ctx context.Context, device *v4l2.Device, encoder *video.Encoder, format v4l2.V4L2Format, cameraPixelFormat string, inputPixelFormat video.PixelFormat, titleGray *image.Gray, titleAlpha *image.Alpha, barGray *image.Gray, barAlpha *image.Alpha) error {
 	var rawFrame []byte
 
 	for ctx.Err() == nil {
@@ -41,7 +41,11 @@ func recordSoftware(ctx context.Context, device *v4l2.Device, encoder *video.Enc
 			return err
 		}
 
+		// Dashcam title
 		overlay.BlendOverlay(ycbcr.Y, ycbcr.YStride, ycbcr.Rect.Dx(), ycbcr.Rect.Dy(), titleGray, titleAlpha, 0, 0)
+
+		// Bottom bar
+		overlay.BlendOverlay(ycbcr.Y, ycbcr.YStride, ycbcr.Rect.Dx(), ycbcr.Rect.Dy(), barGray, barAlpha, 0, ycbcr.Rect.Dy()-barGray.Bounds().Dy())
 
 		rawFrame, err = video.PackFrame(rawFrame, ycbcr)
 		if err != nil {

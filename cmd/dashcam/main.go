@@ -49,15 +49,29 @@ func main() {
 		return
 	}
 
-	overlayConfig := overlay.Config{
-		Title:       dashcamConfig.DashcamTitle,
+	titleOverlayConfig := overlay.Config{
+		Text:        dashcamConfig.DashcamTitle,
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
 	}
 
-	dashcamTitleImageGray, dashcamTitleImageAlpha, err := overlay.RenderTitle(overlayConfig)
+	dashcamTitleImageGray, dashcamTitleImageAlpha, err := overlay.RenderOverlay(titleOverlayConfig)
 
 	if err != nil {
 		log.Printf("Unable to create dashcam title: %v", err)
+		return
+	}
+
+	bottomBarOverlayConfig := overlay.Config{
+		Text:        "  0 km/h   2026-11-13 08:00:00",
+		FrameHeight: int(dashcamConfig.VideoConfig.Height),
+		Width:       int(dashcamConfig.VideoConfig.Width),
+	}
+
+	bottomBarImageGray, bottomBarImageAlpha, err := overlay.RenderOverlay(bottomBarOverlayConfig)
+
+	if err != nil {
+		log.Printf("Unable to create bottom bar: %v", err)
+		return
 	}
 
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
@@ -203,6 +217,8 @@ func main() {
 			requestedFormat,
 			dashcamTitleImageGray,
 			dashcamTitleImageAlpha,
+			bottomBarImageGray,
+			bottomBarImageAlpha,
 		)
 	} else {
 		err = recordSoftware(
@@ -214,6 +230,8 @@ func main() {
 			inputConfig.PixelFormat,
 			dashcamTitleImageGray,
 			dashcamTitleImageAlpha,
+			bottomBarImageGray,
+			bottomBarImageAlpha,
 		)
 	}
 

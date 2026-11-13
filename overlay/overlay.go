@@ -11,11 +11,15 @@ import (
 )
 
 type Config struct {
-	Title       string
+	Text        string
 	FrameHeight int // to calculate box height and font size
+	Width       int // 0 by default, does not get set for dashcam title
 }
 
-func RenderTitle(cfg Config) (*image.Gray, *image.Alpha, error) {
+func RenderOverlay(cfg Config) (*image.Gray, *image.Alpha, error) {
+	if cfg.Width < 0 {
+		return nil, nil, fmt.Errorf("Width can not be negative, got: %d", cfg.Width)
+	}
 	if cfg.FrameHeight <= 0 {
 		return nil, nil, fmt.Errorf("Cant calculate font size without frame height")
 	}
@@ -39,13 +43,17 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha, error) {
 		return nil, nil, fmt.Errorf("Unable to create new face: %w", err)
 	}
 
-	textWidth := font.MeasureString(face, cfg.Title).Ceil()
+	textWidth := font.MeasureString(face, cfg.Text).Ceil()
 
 	// metrics holds the fonts measurements
 	metrics := face.Metrics()
 	textHeight := (metrics.Ascent + metrics.Descent).Ceil()
 
-	bounds := image.Rect(0, 0, textWidth+10, textHeight+5)
+	boxWidth := textWidth + 10
+	if cfg.Width > 0 {
+		boxWidth = cfg.Width
+	}
+	bounds := image.Rect(0, 0, boxWidth, textHeight+5)
 
 	pixels := image.NewGray(bounds)
 	alpha := image.NewAlpha(bounds)
@@ -62,7 +70,7 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha, error) {
 		Dot:  fixed.P(5, 2+metrics.Ascent.Ceil()),
 	}
 
-	textDrawer.DrawString(cfg.Title)
+	textDrawer.DrawString(cfg.Text)
 
 	// Draw it again on the alpha channel so
 	// we make the text fully opaque
@@ -73,6 +81,6 @@ func RenderTitle(cfg Config) (*image.Gray, *image.Alpha, error) {
 		Dot:  fixed.P(5, 2+metrics.Ascent.Ceil()),
 	}
 
-	textDrawer.DrawString(cfg.Title)
+	textDrawer.DrawString(cfg.Text)
 	return pixels, alpha, nil
 }

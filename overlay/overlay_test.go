@@ -4,17 +4,17 @@ import (
 	"testing"
 )
 
-func TestRenderTitleDimensions(t *testing.T) {
+func TestRenderOverlayDimensions(t *testing.T) {
 	titles := []string{"", "A", "Go Cam", "Dashcam"}
 	var widths []int
 	height := 0
 	for _, title := range titles {
-		pixels, alpha, err := RenderTitle(Config{Title: title, FrameHeight: 720})
+		pixels, alpha, err := RenderOverlay(Config{Text: title, FrameHeight: 720})
 		if err != nil {
 			t.Fatalf("Error creating title %q: %v", title, err)
 		}
 		if pixels == nil || alpha == nil {
-			t.Fatalf("RenderTitle(%q) returned a nil image", title)
+			t.Fatalf("RenderOverlay(%q) returned a nil image", title)
 		}
 		if pixels.Bounds() != alpha.Bounds() {
 			t.Errorf("%q: brightness bounds %v differ from alpha bounds %v", title, pixels.Bounds(), alpha.Bounds())
@@ -40,8 +40,8 @@ func TestRenderTitleDimensions(t *testing.T) {
 	}
 }
 
-func TestRenderTitleBackgroundPadding(t *testing.T) {
-	pixels, alpha, err := RenderTitle(Config{Title: "Andreas Dashcam", FrameHeight: 720})
+func TestRenderOverlayBackgroundPadding(t *testing.T) {
+	pixels, alpha, err := RenderOverlay(Config{Text: "Andreas Dashcam", FrameHeight: 720})
 
 	if err != nil {
 		t.Fatalf("Error creating title: %v", err)
@@ -65,8 +65,8 @@ func TestRenderTitleBackgroundPadding(t *testing.T) {
 	}
 }
 
-func TestRenderTitleWhiteText(t *testing.T) {
-	pixels, alpha, err := RenderTitle(Config{Title: "Andreas Dashcam", FrameHeight: 720})
+func TestRenderOverlayWhiteText(t *testing.T) {
+	pixels, alpha, err := RenderOverlay(Config{Text: "Andreas Dashcam", FrameHeight: 720})
 
 	if err != nil {
 		t.Fatalf("Error creating title: %v", err)
@@ -99,8 +99,8 @@ func TestRenderTitleWhiteText(t *testing.T) {
 	}
 }
 
-func TestRenderTitleEmptyText(t *testing.T) {
-	pixels, alpha, err := RenderTitle(Config{Title: "", FrameHeight: 720})
+func TestRenderOverlayEmptyText(t *testing.T) {
+	pixels, alpha, err := RenderOverlay(Config{Text: "", FrameHeight: 720})
 
 	if err != nil {
 		t.Fatalf("Error creating title: %v", err)
@@ -115,5 +115,49 @@ func TestRenderTitleEmptyText(t *testing.T) {
 				t.Errorf("alpha at (%d, %d) = %d, want 128", x, y, got)
 			}
 		}
+	}
+}
+
+func TestRenderOverlayFixedWidth(t *testing.T) {
+	pixels, alpha, err := RenderOverlay(Config{Text: "Andreas Dashcam", FrameHeight: 720, Width: 1280})
+	if err != nil {
+		t.Fatalf("Error creating overlay: %v", err)
+	}
+
+	if got := pixels.Bounds().Dx(); got != 1280 {
+		t.Errorf("brightness width = %d, want 1280", got)
+	}
+	if got := alpha.Bounds().Dx(); got != 1280 {
+		t.Errorf("alpha width = %d, want 1280", got)
+	}
+
+	fitted, _, err := RenderOverlay(Config{Text: "Andreas Dashcam", FrameHeight: 720})
+	if err != nil {
+		t.Fatalf("Error creating fitted overlay: %v", err)
+	}
+	if pixels.Bounds().Dy() != fitted.Bounds().Dy() {
+		t.Errorf("height = %d, want %d like the fitted overlay", pixels.Bounds().Dy(), fitted.Bounds().Dy())
+	}
+}
+
+func TestRenderOverlayInvalidSize(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  Config
+	}{
+		{"negative width", Config{Text: "A", FrameHeight: 720, Width: -1}},
+		{"zero frame height", Config{Text: "A", FrameHeight: 0}},
+		{"negative frame height", Config{Text: "A", FrameHeight: -720}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pixels, alpha, err := RenderOverlay(tt.cfg)
+			if err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if pixels != nil || alpha != nil {
+				t.Error("expected nil images on error")
+			}
+		})
 	}
 }

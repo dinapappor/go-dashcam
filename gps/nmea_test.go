@@ -1,6 +1,7 @@
 package gps
 
 import (
+	"errors"
 	"math"
 	"testing"
 	"time"
@@ -536,10 +537,11 @@ func TestParseGGA(t *testing.T) {
 
 func TestParseNMEA(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		wantKind string
-		wantErr  bool
+		name            string
+		input           string
+		wantKind        string
+		wantErr         bool
+		wantUnsupported bool
 	}{
 		{
 			name:     "RMC",
@@ -557,9 +559,10 @@ func TestParseNMEA(t *testing.T) {
 			wantKind: "RMC",
 		},
 		{
-			name:    "unsupported-sentence",
-			input:   "$GPGSV,1,1,00*79",
-			wantErr: true,
+			name:            "unsupported-sentence",
+			input:           "$GPGSV,1,1,00*79",
+			wantErr:         true,
+			wantUnsupported: true,
 		},
 		{
 			name:    "invalid-sentence-name",
@@ -583,6 +586,10 @@ func TestParseNMEA(t *testing.T) {
 
 			if tt.wantErr {
 				return
+			}
+
+			if errors.Is(err, ErrUnsupported) != tt.wantUnsupported {
+				t.Errorf("errors.Is(err, ErrUnsupported) = %v, want %v", errors.Is(err, ErrUnsupported), tt.wantUnsupported)
 			}
 
 			if got.Kind() != tt.wantKind {

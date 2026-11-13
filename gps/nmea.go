@@ -1,6 +1,7 @@
 package gps
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -21,6 +22,8 @@ const (
 	MANUAL                                 // manual input
 	SIMULATION                             // simulation mode
 )
+
+var ErrUnsupported = errors.New("unsupported sentence")
 
 type Sentence interface {
 	Kind() string
@@ -152,7 +155,7 @@ func ParseNMEA(line string) (Sentence, error) {
 	case "GGA":
 		return parseGGA(fields[1:])
 	default:
-		return nil, fmt.Errorf("unsupported sentence %q", kind)
+		return nil, fmt.Errorf("%w: %q", ErrUnsupported, kind)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 type Config struct {
 	DashcamTitle    string      `json:"dashcam_title"`
 	OutputDirectory string      `json:"output_directory"`
+	SpeedUnit       string      `json:"speed_unit"`
 	VideoConfig     VideoConfig `json:"video_config"`
 }
 
@@ -41,6 +42,15 @@ func ParseConfig(path string) (Config, error) {
 
 	if err != nil {
 		return Config{}, fmt.Errorf("Could not parse config: %w", err)
+	}
+
+	switch config.SpeedUnit {
+	case "mph", "km/h":
+		//do nothing
+	case "kmh", "":
+		config.SpeedUnit = "km/h"
+	default:
+		return Config{}, fmt.Errorf("Unknown speedunit %q", config.SpeedUnit)
 	}
 
 	if config.OutputDirectory == "" {

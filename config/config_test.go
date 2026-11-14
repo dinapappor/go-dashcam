@@ -244,3 +244,40 @@ func TestContinuousConfigWithoutDuration(t *testing.T) {
 		t.Errorf("duration = %v, want 0", got)
 	}
 }
+
+func TestParseConfigSpeedUnit(t *testing.T) {
+	tests := []struct {
+		name    string
+		field   string
+		want    string
+		wantErr bool
+	}{
+		{name: "missing defaults to km/h", want: "km/h"},
+		{name: "empty defaults to km/h", field: `"speed_unit":"",`, want: "km/h"},
+		{name: "kmh becomes km/h", field: `"speed_unit":"kmh",`, want: "km/h"},
+		{name: "explicit km/h", field: `"speed_unit":"km/h",`, want: "km/h"},
+		{name: "explicit mph", field: `"speed_unit":"mph",`, want: "mph"},
+		{name: "unknown unit", field: `"speed_unit":"knots",`, wantErr: true},
+		{name: "wrong case", field: `"speed_unit":"MPH",`, wantErr: true},
+		{name: "surrounding space", field: `"speed_unit":" kmh",`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{` + tt.field + `"video_config":{"width":1280,"height":720,"fps":30}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected unknown speed unit error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.SpeedUnit != tt.want {
+				t.Errorf("SpeedUnit = %q, want %q", cfg.SpeedUnit, tt.want)
+			}
+		})
+	}
+}

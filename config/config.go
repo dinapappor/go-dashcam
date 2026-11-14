@@ -104,8 +104,15 @@ func ParseConfig(path string) (Config, error) {
 		if config.VideoConfig.EncoderDevice == "" {
 			return Config{}, fmt.Errorf("EncoderDevice must be set when using v4l2m2m")
 		}
-		if config.VideoConfig.Bitrate <= 0 {
-			return Config{}, fmt.Errorf("Bitrate must be set when using v4l2m2m")
+		if config.VideoConfig.Bitrate < 0 {
+			return Config{}, fmt.Errorf("Bitrate cannot be negative using v4l2m2m")
+		}
+		if config.VideoConfig.Bitrate == 0 {
+			if config.VideoConfig.Height >= 1080 {
+				config.VideoConfig.Bitrate = 10_000_000
+			} else {
+				config.VideoConfig.Bitrate = 5_000_000
+			}
 		}
 	}
 

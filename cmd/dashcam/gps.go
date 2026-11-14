@@ -9,7 +9,7 @@ import (
 	"github.com/dinapappor/go-dashcam/overlay"
 )
 
-func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig overlay.Config) error {
+func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
 
 	f, err := gps.OpenI2C(path, address)
 
@@ -24,7 +24,7 @@ func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig 
 
 	err = gps.ReadSentences(f, func(s gps.Sentence) {
 		fix.Update(s)
-		text := barText(fix)
+		text := barText(fix, speedunit)
 
 		// Don't update if there are no updates
 		if text == lastText {

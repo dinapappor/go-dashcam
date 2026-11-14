@@ -17,38 +17,62 @@ func TestBarText(t *testing.T) {
 	tests := []struct {
 		name string
 		fix  gps.Fix
+		unit string
 		want string
 	}{
 		{
 			name: "no GPS fix",
+			unit: "km/h",
 			fix:  gps.Fix{},
 			want: "No GPS fix",
 		},
 		{
 			name: "no GPS fix ignores time and speed",
+			unit: "km/h",
 			fix:  gps.Fix{RMC: gps.RMC{Time: fixTime, SpeedKts: 10}},
 			want: "No GPS fix",
 		},
 		{
 			name: "valid fix with zero speed",
+			unit: "km/h",
 			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime}},
 			want: "0 km/h 2026-11-14 00:30:05",
 		},
 		{
 			name: "converts knots to rounded km/h",
+			unit: "km/h",
 			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime}},
 			want: "19 km/h 2026-11-14 00:30:05",
 		},
 		{
 			name: "rounds speed up",
+			unit: "km/h",
 			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 0.3, Time: fixTime}},
 			want: "1 km/h 2026-11-14 00:30:05",
+		},
+		{
+			name: "converts knots to rounded mph",
+			unit: "mph",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime}},
+			want: "12 mph 2026-11-14 00:30:05",
+		},
+		{
+			name: "mph with zero speed",
+			unit: "mph",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime}},
+			want: "0 mph 2026-11-14 00:30:05",
+		},
+		{
+			name: "mph with no GPS fix",
+			unit: "mph",
+			fix:  gps.Fix{RMC: gps.RMC{Time: fixTime, SpeedKts: 10}},
+			want: "No GPS fix",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := barText(tt.fix)
+			got := barText(tt.fix, tt.unit)
 			if got != tt.want {
 				t.Errorf("barText() = %q, want %q", got, tt.want)
 			}

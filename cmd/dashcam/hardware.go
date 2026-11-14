@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
@@ -14,7 +15,7 @@ import (
 	"github.com/dinapappor/go-dashcam/video/v4l2m2m"
 )
 
-func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m.Encoder, encoder *video.Encoder, format v4l2.V4L2Format, titleGray *image.Gray, titleAlpha *image.Alpha, barGray *image.Gray, barAlpha *image.Alpha) error {
+func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m.Encoder, encoder *video.Encoder, format v4l2.V4L2Format, titleGray *image.Gray, titleAlpha *image.Alpha, bar *atomic.Pointer[barImage]) error {
 	held := make([]v4l2.Frame, len(device.Buffers()))
 	inFlight := make([]bool, len(device.Buffers()))
 	inFlightCount := 0
@@ -91,9 +92,13 @@ func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m
 		if err != nil {
 			return fmt.Errorf("sync start: %w", err)
 		}
+
+		// Dashcam title
 		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, titleGray, titleAlpha, 0, 0)
 
-		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, barGray, barAlpha, 0, height-barGray.Bounds().Dy())
+		// Load bottom bar from atomic pointer
+		b := bar.Load()
+		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, b.gray, b.alpha, 0, height-b.gray.Bounds().Dy())
 
 		err = v4l2.SyncBuffer(exportFd, v4l2.DmaBufSyncEnd|rw)
 		if err != nil {

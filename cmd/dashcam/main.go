@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"time"
 )
 
@@ -62,7 +63,7 @@ func main() {
 	}
 
 	bottomBarOverlayConfig := overlay.Config{
-		Text:        "  0 km/h   2026-11-13 08:00:00",
+		Text:        "No GPS fix",
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
 		Width:       int(dashcamConfig.VideoConfig.Width),
 	}
@@ -73,6 +74,15 @@ func main() {
 		log.Printf("Unable to create bottom bar: %v", err)
 		return
 	}
+
+	var bottomBar atomic.Pointer[barImage]
+
+	bottomBar.Store(
+		&barImage{
+			gray:  bottomBarImageGray,
+			alpha: bottomBarImageAlpha,
+		},
+	)
 
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
 
@@ -217,8 +227,7 @@ func main() {
 			requestedFormat,
 			dashcamTitleImageGray,
 			dashcamTitleImageAlpha,
-			bottomBarImageGray,
-			bottomBarImageAlpha,
+			&bottomBar,
 		)
 	} else {
 		err = recordSoftware(
@@ -230,8 +239,7 @@ func main() {
 			inputConfig.PixelFormat,
 			dashcamTitleImageGray,
 			dashcamTitleImageAlpha,
-			bottomBarImageGray,
-			bottomBarImageAlpha,
+			&bottomBar,
 		)
 	}
 

@@ -2,9 +2,15 @@ package main
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/dinapappor/go-dashcam/gps"
 )
+
+type barImage struct {
+	gray  *image.Gray
+	alpha *image.Alpha
+}
 
 func barText(fix gps.Fix) string {
 	if !fix.RMC.Valid {

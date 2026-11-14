@@ -84,6 +84,16 @@ func main() {
 		},
 	)
 
+	// gps loop
+	go func() {
+		// hardcoded for now, should be read from config later
+		err := readGPS("/dev/i2c-1", 0x10, &bottomBar, bottomBarOverlayConfig)
+
+		if err != nil {
+			log.Printf("GPS stopped: %v", err)
+		}
+	}()
+
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
 
 	if err != nil {

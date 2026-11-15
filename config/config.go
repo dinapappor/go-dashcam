@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -33,7 +34,8 @@ type GPSConfig struct {
 	Type         string `json:"type"`
 	Device       string `json:"device"`
 	Address      string `json:"address"`
-	AddressValue int    `json:"-"` // a bit of cheating here
+	AddressValue int    `json:"-"`        // a bit of cheating here
+	Protocol     string `json:"protocol"` // ie, PMTK, ubx etc
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -84,6 +86,15 @@ func ParseConfig(path string) (Config, error) {
 			return Config{}, fmt.Errorf("Could not parse gps address: %w", err)
 		}
 		config.GPSConfig.AddressValue = int(tempAddr)
+
+		config.GPSConfig.Protocol = strings.ToLower(config.GPSConfig.Protocol)
+		switch config.GPSConfig.Protocol {
+		case "", "pmtk":
+			//Cool
+
+		default:
+			return Config{}, fmt.Errorf("Unknown protocol %q", config.GPSConfig.Protocol)
+		}
 	}
 
 	if config.VideoConfig.Width == 0 {

@@ -12,7 +12,7 @@ import (
 	"github.com/dinapappor/go-dashcam/overlay"
 )
 
-func openGPS(cfg config.GPSConfig) (io.ReadCloser, error) {
+func openGPS(cfg config.GPSConfig) (io.ReadWriteCloser, error) {
 	//Decide on how to talk to the dewice
 	switch cfg.Type {
 	case "i2c":

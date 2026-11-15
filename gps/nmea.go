@@ -62,7 +62,7 @@ func (r RMC) MPH() float64 {
 	return r.SpeedKts * 1.15078
 }
 
-func calculateChecksum(nmeaSentence string) uint8 {
+func CalculateChecksum(nmeaSentence string) uint8 {
 	var checksum uint8
 
 	for i := 0; i < len(nmeaSentence); i++ {
@@ -98,7 +98,7 @@ func validateSentence(nmeaSentence string) (string, error) {
 
 	// Calculate checksum for later comparison with
 	// original sentence checksum
-	calculatedChecksum := calculateChecksum(sentence)
+	calculatedChecksum := CalculateChecksum(sentence)
 
 	if calculatedChecksum != uint8(receivedChecksum) {
 		return "", fmt.Errorf("Calculated checksum did not match got: %02X, expected: %02X", receivedChecksum, calculatedChecksum)

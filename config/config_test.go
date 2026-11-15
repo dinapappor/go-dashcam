@@ -288,14 +288,20 @@ func TestParseConfigSpeedUnit(t *testing.T) {
 
 func TestParseConfigGPS(t *testing.T) {
 	tests := []struct {
-		name        string
-		field       string
-		wantNil     bool
-		wantDevice  string
-		wantAddress int
-		wantErr     bool
+		name         string
+		field        string
+		wantNil      bool
+		wantDevice   string
+		wantAddress  int
+		wantProtocol string
+		wantErr      bool
 	}{
 		{name: "missing block means no GPS", wantNil: true},
+		{name: "missing protocol means plain NMEA", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10"},`, wantDevice: "/dev/i2c-1", wantAddress: 16, wantProtocol: ""},
+		{name: "empty protocol means plain NMEA", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10","protocol":""},`, wantDevice: "/dev/i2c-1", wantAddress: 16, wantProtocol: ""},
+		{name: "pmtk protocol", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10","protocol":"pmtk"},`, wantDevice: "/dev/i2c-1", wantAddress: 16, wantProtocol: "pmtk"},
+		{name: "uppercase PMTK is lowered", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10","protocol":"PMTK"},`, wantDevice: "/dev/i2c-1", wantAddress: 16, wantProtocol: "pmtk"},
+		{name: "unknown protocol", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10","protocol":"ubx"},`, wantErr: true},
 		{name: "hex address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10"},`, wantDevice: "/dev/i2c-1", wantAddress: 16},
 		{name: "decimal address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"16"},`, wantDevice: "/dev/i2c-1", wantAddress: 16},
 		{name: "uppercase hex address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0X1F"},`, wantDevice: "/dev/i2c-1", wantAddress: 31},
@@ -337,6 +343,9 @@ func TestParseConfigGPS(t *testing.T) {
 			}
 			if cfg.GPSConfig.AddressValue != tt.wantAddress {
 				t.Errorf("AddressValue = %d, want %d", cfg.GPSConfig.AddressValue, tt.wantAddress)
+			}
+			if cfg.GPSConfig.Protocol != tt.wantProtocol {
+				t.Errorf("Protocol = %q, want %q", cfg.GPSConfig.Protocol, tt.wantProtocol)
 			}
 		})
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync/atomic"
@@ -9,7 +10,7 @@ import (
 	"github.com/dinapappor/go-dashcam/overlay"
 )
 
-func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
+func readGPS(ctx context.Context, path string, address int, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
 
 	f, err := gps.OpenI2C(path, address)
 
@@ -18,6 +19,11 @@ func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig 
 	}
 
 	defer f.Close()
+
+	stop := context.AfterFunc(ctx, func() {
+		f.Close()
+	})
+	defer stop()
 
 	var fix gps.Fix
 	var lastText string
@@ -53,6 +59,9 @@ func readGPS(path string, address int, bar *atomic.Pointer[barImage], barConfig 
 	})
 
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
 		return fmt.Errorf("Read GPS: %w", err)
 	}
 

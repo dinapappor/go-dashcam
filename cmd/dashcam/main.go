@@ -85,9 +85,12 @@ func main() {
 	)
 
 	if dashcamConfig.GPSConfig != nil {
+		gpsDone := make(chan struct{})
 		// gps loop
 		go func() {
+			defer close(gpsDone)
 			err := readGPS(
+				ctx,
 				dashcamConfig.GPSConfig.Device,
 				dashcamConfig.GPSConfig.AddressValue,
 				&bottomBar,
@@ -98,6 +101,10 @@ func main() {
 			if err != nil {
 				log.Printf("GPS stopped: %v", err)
 			}
+		}()
+		defer func() {
+			stop()
+			<-gpsDone
 		}()
 	}
 

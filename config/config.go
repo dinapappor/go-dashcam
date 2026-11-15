@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type Config struct {
 	OutputDirectory string      `json:"output_directory"`
 	SpeedUnit       string      `json:"speed_unit"`
 	VideoConfig     VideoConfig `json:"video_config"`
+	GPSConfig       *GPSConfig  `json:"gps_config"`
 }
 
 type VideoConfig struct {
@@ -25,6 +27,13 @@ type VideoConfig struct {
 	Encoder         string `json:"encoder"`        // For now we make this hardcoded in config.
 	EncoderDevice   string `json:"encoder_device"` // as above - should be auto-detected
 	Bitrate         int32  `json:"bitrate"`
+}
+
+type GPSConfig struct {
+	Type         string `json:"type"`
+	Device       string `json:"device"`
+	Address      string `json:"address"`
+	AddressValue int    `json:"-"` // a bit of cheating here
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -55,6 +64,26 @@ func ParseConfig(path string) (Config, error) {
 
 	if config.OutputDirectory == "" {
 		config.OutputDirectory = "videos"
+	}
+
+	if config.GPSConfig != nil {
+		switch config.GPSConfig.Type {
+		case "i2c":
+			// fine
+		default:
+			return Config{}, fmt.Errorf("Unknown GPS type %s", config.GPSConfig.Type)
+		}
+
+		if config.GPSConfig.Device == "" {
+			return Config{}, fmt.Errorf("GPS device must not be empty")
+		}
+
+		tempAddr, err := strconv.ParseUint(config.GPSConfig.Address, 0, 8)
+
+		if err != nil {
+			return Config{}, fmt.Errorf("Could not parse gps address: %w", err)
+		}
+		config.GPSConfig.AddressValue = int(tempAddr)
 	}
 
 	if config.VideoConfig.Width == 0 {

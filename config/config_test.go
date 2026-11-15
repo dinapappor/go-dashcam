@@ -285,3 +285,59 @@ func TestParseConfigSpeedUnit(t *testing.T) {
 		})
 	}
 }
+
+func TestParseConfigGPS(t *testing.T) {
+	tests := []struct {
+		name        string
+		field       string
+		wantNil     bool
+		wantDevice  string
+		wantAddress int
+		wantErr     bool
+	}{
+		{name: "missing block means no GPS", wantNil: true},
+		{name: "hex address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x10"},`, wantDevice: "/dev/i2c-1", wantAddress: 16},
+		{name: "decimal address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"16"},`, wantDevice: "/dev/i2c-1", wantAddress: 16},
+		{name: "uppercase hex address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0X1F"},`, wantDevice: "/dev/i2c-1", wantAddress: 31},
+		{name: "largest address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0xff"},`, wantDevice: "/dev/i2c-1", wantAddress: 255},
+		{name: "unknown type", field: `"gps_config":{"type":"serial","device":"/dev/ttyACM0","address":"0x10"},`, wantErr: true},
+		{name: "empty type", field: `"gps_config":{"device":"/dev/i2c-1","address":"0x10"},`, wantErr: true},
+		{name: "empty device", field: `"gps_config":{"type":"i2c","address":"0x10"},`, wantErr: true},
+		{name: "empty address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1"},`, wantErr: true},
+		{name: "garbage address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"zz"},`, wantErr: true},
+		{name: "address too large", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"0x100"},`, wantErr: true},
+		{name: "negative address", field: `"gps_config":{"type":"i2c","device":"/dev/i2c-1","address":"-1"},`, wantErr: true},
+		{name: "empty block", field: `"gps_config":{},`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{` + tt.field + `"video_config":{"width":1280,"height":720,"fps":30}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected GPS config error, got %+v", cfg.GPSConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if tt.wantNil {
+				if cfg.GPSConfig != nil {
+					t.Errorf("GPSConfig = %+v, want nil", cfg.GPSConfig)
+				}
+				return
+			}
+			if cfg.GPSConfig == nil {
+				t.Fatal("GPSConfig is nil")
+			}
+			if cfg.GPSConfig.Device != tt.wantDevice {
+				t.Errorf("Device = %q, want %q", cfg.GPSConfig.Device, tt.wantDevice)
+			}
+			if cfg.GPSConfig.AddressValue != tt.wantAddress {
+				t.Errorf("AddressValue = %d, want %d", cfg.GPSConfig.AddressValue, tt.wantAddress)
+			}
+		})
+	}
+}

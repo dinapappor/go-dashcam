@@ -69,9 +69,19 @@ func ParseConfig(path string) (Config, error) {
 	}
 
 	if config.GPSConfig != nil {
+		config.GPSConfig.Type = strings.ToLower(config.GPSConfig.Type)
 		switch config.GPSConfig.Type {
 		case "i2c":
-			// fine
+			// pa1010d or other i2c gps's
+			tempAddr, err := strconv.ParseUint(config.GPSConfig.Address, 0, 8)
+
+			if err != nil {
+				return Config{}, fmt.Errorf("Could not parse gps address: %w", err)
+			}
+
+			config.GPSConfig.AddressValue = int(tempAddr)
+		case "serial":
+			// ublox etc
 		default:
 			return Config{}, fmt.Errorf("Unknown GPS type %s", config.GPSConfig.Type)
 		}
@@ -79,13 +89,6 @@ func ParseConfig(path string) (Config, error) {
 		if config.GPSConfig.Device == "" {
 			return Config{}, fmt.Errorf("GPS device must not be empty")
 		}
-
-		tempAddr, err := strconv.ParseUint(config.GPSConfig.Address, 0, 8)
-
-		if err != nil {
-			return Config{}, fmt.Errorf("Could not parse gps address: %w", err)
-		}
-		config.GPSConfig.AddressValue = int(tempAddr)
 
 		config.GPSConfig.Protocol = strings.ToLower(config.GPSConfig.Protocol)
 		switch config.GPSConfig.Protocol {

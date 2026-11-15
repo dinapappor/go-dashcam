@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"sync/atomic"
+	"syscall"
 
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
@@ -17,6 +19,13 @@ func openGPS(cfg config.GPSConfig) (io.ReadWriteCloser, error) {
 	switch cfg.Type {
 	case "i2c":
 		f, err := gps.OpenI2C(cfg.Device, cfg.AddressValue)
+
+		if err != nil {
+			return nil, fmt.Errorf("Unable to open %s: %w", cfg.Device, err)
+		}
+		return f, nil
+	case "serial":
+		f, err := os.OpenFile(cfg.Device, os.O_RDWR|syscall.O_NOCTTY, 0)
 
 		if err != nil {
 			return nil, fmt.Errorf("Unable to open %s: %w", cfg.Device, err)

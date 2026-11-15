@@ -167,8 +167,8 @@ encoder so it can support both decoded MJPEG and packed YU12 frames.
 - [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.
 - [x] Add a configurable title overlay.
 - [x] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
-- [ ] Read and validate GPS location and speed.
-- [ ] Add GPS overlays.
+- [x] Read and validate GPS location and speed.
+- [x] Add GPS overlays.
 - [ ] Stream to YouTube and configurable destinations, with reconnection after outages.
 - [ ] Add optional microphone audio with video synchronization.
 

@@ -3,32 +3,43 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"sync/atomic"
 
+	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
 	"github.com/dinapappor/go-dashcam/overlay"
 )
 
-func readGPS(ctx context.Context, path string, address int, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
+func openGPS(cfg config.GPSConfig) (io.ReadCloser, error) {
+	//Decide on how to talk to the dewice
+	switch cfg.Type {
+	case "i2c":
+		f, err := gps.OpenI2C(cfg.Device, cfg.AddressValue)
 
-	f, err := gps.OpenI2C(path, address)
-
-	if err != nil {
-		return fmt.Errorf("Could not read gps: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to open %s: %w", cfg.Device, err)
+		}
+		return f, nil
+	default:
+		return nil, fmt.Errorf("Unknown gps device type %q", cfg.Type)
 	}
+}
 
-	defer f.Close()
+func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
+
+	defer r.Close()
 
 	stop := context.AfterFunc(ctx, func() {
-		f.Close()
+		r.Close()
 	})
 	defer stop()
 
 	var fix gps.Fix
 	var lastText string
 
-	err = gps.ReadSentences(f, func(s gps.Sentence) {
+	err := gps.ReadSentences(r, func(s gps.Sentence) {
 		fix.Update(s)
 		text := barText(fix, speedunit)
 

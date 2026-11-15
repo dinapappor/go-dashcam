@@ -85,29 +85,34 @@ func main() {
 	)
 
 	if dashcamConfig.GPSConfig != nil {
-		gpsDone := make(chan struct{})
-		// gps loop
-		go func() {
-			defer close(gpsDone)
-			err := readGPS(
-				ctx,
-				dashcamConfig.GPSConfig.Device,
-				dashcamConfig.GPSConfig.AddressValue,
-				&bottomBar,
-				bottomBarOverlayConfig,
-				dashcamConfig.SpeedUnit,
-			)
+		gpsReader, err := openGPS(*dashcamConfig.GPSConfig)
+		if err != nil {
+			log.Printf("GPS disabled: %v", err)
+		} else {
 
-			if err != nil {
-				log.Printf("GPS stopped: %v", err)
-			}
-		}()
-		defer func() {
-			stop()
-			<-gpsDone
-		}()
+			gpsDone := make(chan struct{})
+			// gps loop
+			go func() {
+				defer close(gpsDone)
+				err := readGPS(
+					ctx,
+					gpsReader,
+					&bottomBar,
+					bottomBarOverlayConfig,
+					dashcamConfig.SpeedUnit,
+				)
+
+				if err != nil {
+					log.Printf("GPS stopped: %v", err)
+				}
+			}()
+
+			defer func() {
+				stop()
+				<-gpsDone
+			}()
+		}
 	}
-
 	segmentDuration, err := dashcamConfig.GetSegmentDuration()
 
 	if err != nil {

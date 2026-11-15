@@ -1184,3 +1184,55 @@ func TestSyncBufferInvalidFD(t *testing.T) {
 		t.Fatalf("This should fail with bad file descriptor, got %v", err)
 	}
 }
+
+func TestV4L2ControlSize(t *testing.T) {
+	got := unsafe.Sizeof(V4L2Control{})
+
+	if got != 8 {
+		t.Errorf("V4L2Control size = %d, want 8", got)
+	}
+}
+
+func TestV4L2ControlValueOffset(t *testing.T) {
+	got := unsafe.Offsetof(V4L2Control{}.Value)
+
+	if got != 4 {
+		t.Errorf("V4L2Control.Value offset = %d, want 4", got)
+	}
+}
+
+func TestVidiocSCtrl(t *testing.T) {
+	const readWrite = 3
+	want := uint32(readWrite<<30 | uint32(unsafe.Sizeof(V4L2Control{}))<<16 | 'V'<<8 | 28)
+
+	if VidiocSCtrl != want {
+		t.Errorf("VidiocSCtrl = %#x, want %#x", VidiocSCtrl, want)
+	}
+}
+
+func TestSetControlNotV4L2Device(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	defer file.Close()
+
+	err = SetControl(file.Fd(), 0x009a0915, 1)
+	if !errors.Is(err, syscall.ENOTTY) {
+		t.Fatalf("SetControl on a regular file = %v, want ENOTTY", err)
+	}
+}
+
+func TestSetControlInvalidFD(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "fake")
+	if err != nil {
+		t.Fatalf("Unable to open temporary file: %v", err)
+	}
+	fd := file.Fd()
+	file.Close()
+
+	err = SetControl(fd, 0x009a0915, 1)
+	if !errors.Is(err, syscall.EBADF) {
+		t.Fatalf("SetControl on a closed fd = %v, want EBADF", err)
+	}
+}

@@ -320,3 +320,15 @@ func SyncBuffer(fd int, flags uint64) error {
 	}
 	return nil
 }
+
+func SetControl(fd uintptr, id uint32, value int32) error {
+
+	v4l2Control := V4L2Control{ID: id, Value: value}
+
+	err := ioctlDevice(fd, VidiocSCtrl, unsafe.Pointer(&v4l2Control))
+
+	if err != nil {
+		return fmt.Errorf("Error setting control: %w", err)
+	}
+	return nil
+}

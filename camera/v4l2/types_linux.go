@@ -108,6 +108,12 @@ type V4L2ExportBuffer struct {
 	Reserved [11]uint32
 }
 
+// for setting frame exposure time, hdr etc
+type V4L2Control struct {
+	ID    uint32
+	Value int32
+}
+
 type DmaBufSync struct {
 	Flags uint64
 }

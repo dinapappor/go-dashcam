@@ -79,6 +79,9 @@ const BufFlagError = 0x00000040
 // needed for dma-buf
 const VidiocExpBuf = 0xC0405610
 
+// Needed for setting hdr and frame exposure
+const VidiocSCtrl = 0xC008561C
+
 const DmaBufIoctlSync = 0x40086200
 const (
 	DmaBufSyncRead  = 1 << 0

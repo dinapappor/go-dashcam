@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"log"
+	"syscall"
+
 	"github.com/dinapappor/go-dashcam/camera/v4l2"
 	"github.com/dinapappor/go-dashcam/config"
-	"log"
 )
 
 func configureCamera(device *v4l2.Device, cfg config.VideoConfig, export bool) (v4l2.V4L2Format, error) {
@@ -86,6 +89,14 @@ func configureCamera(device *v4l2.Device, cfg config.VideoConfig, export bool) (
 	if err != nil {
 		return v4l2.V4L2Format{}, fmt.Errorf("Unable to set stream params, got %w", err)
 	}
+
+	err = v4l2.SetControl(device.Fd(), v4l2.CidExposureAutoPriority, 0)
+	if errors.Is(err, syscall.EINVAL) || errors.Is(err, syscall.ENOTTY) {
+		log.Printf("Camera cannot lock frame rate in low light, skipping: %v", err)
+	} else if err != nil {
+		return v4l2.V4L2Format{}, fmt.Errorf("Unable to lock frame rate: %w", err)
+	}
+
 	err = device.SetupBuffers(4)
 
 	if err != nil {

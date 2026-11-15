@@ -89,3 +89,6 @@ const (
 	DmaBufSyncStart = 0 << 2
 	DmaBufSyncEnd   = 1 << 2
 )
+
+const CidExposureAutoPriority = 0x009a0903
+const CidDynamicRange = 0x009a0915

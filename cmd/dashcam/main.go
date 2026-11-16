@@ -3,17 +3,19 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/dinapappor/go-dashcam/config"
-	"github.com/dinapappor/go-dashcam/gps/pmtk"
-	"github.com/dinapappor/go-dashcam/overlay"
-	"github.com/dinapappor/go-dashcam/recording"
-	"github.com/dinapappor/go-dashcam/video"
-	"github.com/dinapappor/go-dashcam/video/v4l2m2m"
 	"log"
 	"os"
 	"os/signal"
 	"sync/atomic"
 	"time"
+
+	"github.com/dinapappor/go-dashcam/config"
+	"github.com/dinapappor/go-dashcam/gps"
+	"github.com/dinapappor/go-dashcam/gps/pmtk"
+	"github.com/dinapappor/go-dashcam/overlay"
+	"github.com/dinapappor/go-dashcam/recording"
+	"github.com/dinapappor/go-dashcam/video"
+	"github.com/dinapappor/go-dashcam/video/v4l2m2m"
 )
 
 func main() {

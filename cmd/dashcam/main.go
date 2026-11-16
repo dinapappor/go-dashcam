@@ -64,7 +64,7 @@ func main() {
 	}
 
 	bottomBarOverlayConfig := overlay.Config{
-		Text:        "No GPS fix",
+		Text:        barText(gps.Fix{}, dashcamConfig.SpeedUnit),
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
 		Width:       int(dashcamConfig.VideoConfig.Width),
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"image"
+	"math"
 
 	"github.com/dinapappor/go-dashcam/gps"
 )
@@ -12,10 +13,17 @@ type barImage struct {
 	alpha *image.Alpha
 }
 
-func barText(fix gps.Fix, unit string) string {
-	if !fix.RMC.Valid {
-		return "No GPS fix"
+func formatCoordinate(value float64, positive, negative string, width int) string {
+	letter := positive
+
+	if value < 0 {
+		letter = negative
 	}
+
+	return fmt.Sprintf("%s%0*.4f", letter, width, math.Abs(value))
+}
+
+func barText(fix gps.Fix, unit string) string {
 
 	var speedUnit string
 	var speed float64
@@ -28,5 +36,11 @@ func barText(fix gps.Fix, unit string) string {
 		speed = fix.RMC.KMH()
 	}
 
-	return fmt.Sprintf("%.0f %s %s", speed, speedUnit, fix.RMC.Time.Local().Format("2006-01-02 15:04:05"))
+	if fix.RMC.Valid {
+		lat := formatCoordinate(fix.RMC.Latitude, "N", "S", 7)
+		lon := formatCoordinate(fix.RMC.Longitude, "E", "W", 8)
+		timeText := fix.RMC.Time.Local().Format("2006-01-02 15:04:05")
+		return fmt.Sprintf("%3.0f %s  %s  %s %s", speed, speedUnit, timeText, lat, lon)
+	}
+	return fmt.Sprintf("--- %s  ---------- --:--:-- No GPS fix", speedUnit)
 }

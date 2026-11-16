@@ -74,12 +74,12 @@ func TestReadGPSUpdatesBar(t *testing.T) {
 		unit  string
 		want  string
 	}{
-		{name: "valid fix in km/h", input: validRMC, unit: "km/h", want: "41 km/h 1994-03-23 12:35:19"},
-		{name: "valid fix in mph", input: validRMC, unit: "mph", want: "26 mph 1994-03-23 12:35:19"},
-		{name: "fix lost", input: validRMC + noFixRMC, unit: "km/h", want: "No GPS fix"},
-		{name: "GGA alone is not a fix", input: gga, unit: "km/h", want: "No GPS fix"},
-		{name: "padding and unsupported sentences are skipped", input: "\n\n" + nmeaLine("GPGSV,1,1,00") + validRMC + "\n", unit: "km/h", want: "41 km/h 1994-03-23 12:35:19"},
-		{name: "last fix wins", input: noFixRMC + validRMC, unit: "km/h", want: "41 km/h 1994-03-23 12:35:19"},
+		{name: "valid fix in km/h", input: validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "valid fix in mph", input: validRMC, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "fix lost", input: validRMC + noFixRMC, unit: "km/h", want: "--- km/h  ---------- --:--:--  No GPS fix"},
+		{name: "GGA alone is not a fix", input: gga, unit: "km/h", want: "--- km/h  ---------- --:--:--  No GPS fix"},
+		{name: "padding and unsupported sentences are skipped", input: "\n\n" + nmeaLine("GPGSV,1,1,00") + validRMC + "\n", unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "last fix wins", input: noFixRMC + validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
 	}
 
 	for _, tt := range tests {

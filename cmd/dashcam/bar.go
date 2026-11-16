@@ -42,5 +42,5 @@ func barText(fix gps.Fix, unit string) string {
 		timeText := fix.RMC.Time.Local().Format("2006-01-02 15:04:05")
 		return fmt.Sprintf("%3.0f %s  %s  %s %s", speed, speedUnit, timeText, lat, lon)
 	}
-	return fmt.Sprintf("--- %s  ---------- --:--:-- No GPS fix", speedUnit)
+	return fmt.Sprintf("--- %s  ---------- --:--:--  No GPS fix", speedUnit)
 }

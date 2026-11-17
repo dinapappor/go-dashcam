@@ -61,18 +61,28 @@ func useUTC(t *testing.T) {
 	t.Cleanup(func() { time.Local = oldLocal })
 }
 
+func fakeBarClock(t *testing.T, now time.Time, synced bool) {
+	t.Helper()
+	oldNow, oldSynced := barNow, barClockSynced
+	barNow = func() time.Time { return now }
+	barClockSynced = func() bool { return synced }
+	t.Cleanup(func() { barNow, barClockSynced = oldNow, oldSynced })
+}
+
 func TestReadGPSUpdatesBar(t *testing.T) {
 	useUTC(t)
+	fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), false)
 
 	validRMC := nmeaLine("GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W")
 	noFixRMC := nmeaLine("GPRMC,123520,V,,,,,,,230394,,,N")
 	gga := nmeaLine("GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,")
 
 	tests := []struct {
-		name  string
-		input string
-		unit  string
-		want  string
+		name   string
+		input  string
+		unit   string
+		synced bool
+		want   string
 	}{
 		{name: "valid fix in km/h", input: validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
 		{name: "valid fix in mph", input: validRMC, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167"},
@@ -80,10 +90,14 @@ func TestReadGPSUpdatesBar(t *testing.T) {
 		{name: "GGA alone is not a fix", input: gga, unit: "km/h", want: "--- km/h  ---------- --:--:--  No GPS fix"},
 		{name: "padding and unsupported sentences are skipped", input: "\n\n" + nmeaLine("GPGSV,1,1,00") + validRMC + "\n", unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
 		{name: "last fix wins", input: noFixRMC + validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "fix lost with synced clock shows clock time", input: validRMC + noFixRMC, unit: "km/h", synced: true, want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
+		{name: "GGA alone with synced clock shows clock time", input: gga, unit: "km/h", synced: true, want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
+		{name: "valid fix with synced clock uses GPS time", input: validRMC, unit: "km/h", synced: true, want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), tt.synced)
 			bar := startBar(t, "start")
 			r := io.NopCloser(strings.NewReader(tt.input))
 

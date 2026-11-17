@@ -38,6 +38,12 @@ func openGPS(cfg config.GPSConfig) (io.ReadWriteCloser, error) {
 	}
 }
 
+var barNow = time.Now
+
+var barClockSynced = func() bool {
+	return clock.Synced(clock.TimesyncdMarker)
+}
+
 func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
 
 	defer r.Close()
@@ -52,7 +58,7 @@ func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage]
 
 	err := gps.ReadSentences(r, func(s gps.Sentence) {
 		fix.Update(s)
-		text := barText(fix, speedunit, time.Now(), clock.Synced(clock.TimesyncdMarker))
+		text := barText(fix, speedunit, barNow(), barClockSynced())
 
 		// Don't update if there are no updates
 		if text == lastText {

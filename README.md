@@ -113,81 +113,26 @@ go test ./...
 
 These tests require no camera. Recording and stalled-FFmpeg shutdown have been checked manually; automated hardware tests are not implemented.
 
-## Ideal layout
-
-Current packages and planned additions are shown below. Add future packages when
-their milestone starts; the camera interface and platform package wait until a
-second backend or OS needs them.
-
-```
-go-dashcam/
-├── cmd/
-│   └── dashcam/
-│       ├── main.go
-│       ├── camera.go
-│       ├── hardware.go
-│       ├── software.go
-│       └── profile.go
-│
-├── config/
-│   └── config.go
-│
-├── camera/
-│   ├── camera.go
-│   └── v4l2/
-│
-├── overlay/
-│   ├── overlay.go
-│   └── blend.go
-│
-├── video/
-│   ├── ffmpeg.go
-│   ├── input.go
-│   └── v4l2m2m/
-│
-├── recording/
-│   ├── recording.go
-│   ├── cleanup.go
-│   ├── monitor.go
-│   └── diskspace_linux.go
-│
-├── gps/
-│
-├── stream/
-│
-└── platform/
-```
-
-`main` connects the packages. Lower-level packages do not import `main` or the
-application-wide `config` package. Overlay drawing stays independent of the
-encoder so it can support both decoded MJPEG and packed YU12 frames.
-
-## Milestones
-
-- [x] Capture frames in Go and deliver them to FFmpeg for MP4 recording.
-- [x] Add a configurable title overlay.
-- [x] Add configurable recording segments or continuous recording without splitting, with oldest completed recordings deleted when storage runs low.
-- [x] Read and validate GPS location and speed.
-- [x] Add GPS overlays.
-- [ ] Stream to YouTube and configurable destinations, with reconnection after outages.
-- [ ] Add optional microphone audio with video synchronization.
-
 ## Version goals
 
 - **v0.1:** Title overlay drawn in Go, configurable recording segments or continuous recording, and oldest-file cleanup.
 - **v0.2:** GPS input and location/speed overlay.
-- **v0.3:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
-- **v0.4:** Optional microphone audio synchronized with video.
+- **v0.3:** Optional microphone audio synchronized with video.
+- **v0.4:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
 - **v0.5 (tentative):** Web UI and/or API for configuring settings.
 
 ## Targets
 
-Development currently uses Linux. Raspberry Pi 2W and Raspberry Pi 4 are the first targets. Raspberry Pi5 needs software mode (no h264 encoder block)
+Development currently uses Linux. Raspberry Pi Zero 2 W and Raspberry Pi 4 are the first targets. Raspberry Pi5 needs software mode (no h264 encoder block)
 
 Long-term goals include Linux and FreeBSD on ARM64, AMD64, and RISC-V. These are intended targets, not verified support.
 
 ## Supported platforms
 
-- Raspberry Pi zero 2w - at 1080p with 30 fps (~7% CPU usage in total). Pi 3 expected to work as well since it has the same CPU and even more ram.
+- Raspberry Pi zero 2w - at 1080p with 30 fps (~9% CPU usage in total).
+- Raspberry pi 3 - with 64 bit install of Raspberry Pi OS
+- Raspberry pi 4 - with 64 bit install of Raspberry Pi OS
 - amd64/x86_64 with usb webcamera.
 
+## Supported GPS devices
+- pa1010d - confirmed working at 5Hz with gps+glonass. Other Mediatek GPS chipsets with PMTK protocol expected to work (if not, open up an issue).

@@ -14,11 +14,15 @@ func TestBarText(t *testing.T) {
 
 	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
 
+	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
+
 	tests := []struct {
-		name string
-		fix  gps.Fix
-		unit string
-		want string
+		name   string
+		fix    gps.Fix
+		unit   string
+		now    time.Time
+		synced bool
+		want   string
 	}{
 		{
 			name: "no GPS fix",
@@ -80,11 +84,51 @@ func TestBarText(t *testing.T) {
 			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 9.5, Longitude: 4.25}},
 			want: "  0 km/h  2026-11-14 00:30:05  N09.5000 E004.2500",
 		},
+		{
+			name:   "no GPS fix with synced clock shows local clock time",
+			unit:   "km/h",
+			fix:    gps.Fix{},
+			now:    now,
+			synced: true,
+			want:   "--- km/h  2026-11-16 14:35:00  No GPS fix",
+		},
+		{
+			name:   "no GPS fix with synced clock in mph",
+			unit:   "mph",
+			fix:    gps.Fix{},
+			now:    now,
+			synced: true,
+			want:   "--- mph  2026-11-16 14:35:00  No GPS fix",
+		},
+		{
+			name:   "no GPS fix with unsynced clock hides time",
+			unit:   "km/h",
+			fix:    gps.Fix{},
+			now:    now,
+			synced: false,
+			want:   "--- km/h  ---------- --:--:--  No GPS fix",
+		},
+		{
+			name:   "no GPS fix ignores GPS time when clock is synced",
+			unit:   "km/h",
+			fix:    gps.Fix{RMC: gps.RMC{Time: fixTime, SpeedKts: 10}},
+			now:    now,
+			synced: true,
+			want:   "--- km/h  2026-11-16 14:35:00  No GPS fix",
+		},
+		{
+			name:   "valid fix uses GPS time, not clock time",
+			unit:   "km/h",
+			fix:    gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			now:    now,
+			synced: true,
+			want:   "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := barText(tt.fix, tt.unit)
+			got := barText(tt.fix, tt.unit, tt.now, tt.synced)
 			if got != tt.want {
 				t.Errorf("barText() = %q, want %q", got, tt.want)
 			}
@@ -94,17 +138,21 @@ func TestBarText(t *testing.T) {
 
 func TestBarTextKeepsColumns(t *testing.T) {
 	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
-	withFix := barText(gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h")
-	noFix := barText(gps.Fix{}, "km/h")
+	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
+	withFix := barText(gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h", now, false)
 
-	timeColumn := len("141 km/h  ")
-	positionColumn := len("141 km/h  2026-11-14 00:30:05  ")
+	for _, synced := range []bool{false, true} {
+		noFix := barText(gps.Fix{}, "km/h", now, synced)
 
-	if withFix[timeColumn-2:timeColumn] != "  " || noFix[timeColumn-2:timeColumn] != "  " {
-		t.Errorf("time column differs:\n%q\n%q", withFix, noFix)
-	}
-	if withFix[positionColumn-2:positionColumn] != "  " || noFix[positionColumn-2:positionColumn] != "  " {
-		t.Errorf("position column differs:\n%q\n%q", withFix, noFix)
+		timeColumn := len("141 km/h  ")
+		positionColumn := len("141 km/h  2026-11-14 00:30:05  ")
+
+		if withFix[timeColumn-2:timeColumn] != "  " || noFix[timeColumn-2:timeColumn] != "  " {
+			t.Errorf("synced=%v: time column differs:\n%q\n%q", synced, withFix, noFix)
+		}
+		if withFix[positionColumn-2:positionColumn] != "  " || noFix[positionColumn-2:positionColumn] != "  " {
+			t.Errorf("synced=%v: position column differs:\n%q\n%q", synced, withFix, noFix)
+		}
 	}
 }
 

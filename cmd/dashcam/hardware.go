@@ -59,6 +59,18 @@ func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m
 	height := int(format.PixFormat.Height)
 	const rw = v4l2.DmaBufSyncRead | v4l2.DmaBufSyncWrite
 
+	var scratch []byte
+	blendRows := func(data []byte, gray *image.Gray, alpha *image.Alpha, offsetY int) {
+		rows := min(gray.Bounds().Dy(), height-offsetY)
+		if offsetY < 0 || rows <= 0 {
+			return
+		}
+		region := data[offsetY*stride : (offsetY+rows)*stride]
+		scratch = append(scratch[:0], region...)
+		overlay.BlendOverlay(scratch, stride, width, rows, gray, alpha, 0, 0)
+		copy(region, scratch)
+	}
+
 	for ctx.Err() == nil {
 		err := pump()
 		if err != nil {
@@ -94,11 +106,11 @@ func recordHardware(ctx context.Context, device *v4l2.Device, hwEncoder *v4l2m2m
 		}
 
 		// Dashcam title
-		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, titleGray, titleAlpha, 0, 0)
+		blendRows(frame.Data, titleGray, titleAlpha, 0)
 
 		// Load bottom bar from atomic pointer
 		b := bar.Load()
-		overlay.BlendOverlay(frame.Data[:stride*height], stride, width, height, b.gray, b.alpha, 0, height-b.gray.Bounds().Dy())
+		blendRows(frame.Data, b.gray, b.alpha, height-b.gray.Bounds().Dy())
 
 		err = v4l2.SyncBuffer(exportFd, v4l2.DmaBufSyncEnd|rw)
 		if err != nil {

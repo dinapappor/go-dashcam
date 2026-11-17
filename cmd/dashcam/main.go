@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dinapappor/go-dashcam/clock"
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
 	"github.com/dinapappor/go-dashcam/gps/pmtk"
@@ -66,7 +67,7 @@ func main() {
 	}
 
 	bottomBarOverlayConfig := overlay.Config{
-		Text:        barText(gps.Fix{}, dashcamConfig.SpeedUnit),
+		Text:        barText(gps.Fix{}, dashcamConfig.SpeedUnit, time.Now(), clock.Synced(clock.TimesyncdMarker)),
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
 		Width:       int(dashcamConfig.VideoConfig.Width),
 	}

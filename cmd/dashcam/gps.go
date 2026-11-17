@@ -8,7 +8,9 @@ import (
 	"os"
 	"sync/atomic"
 	"syscall"
+	"time"
 
+	"github.com/dinapappor/go-dashcam/clock"
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
 	"github.com/dinapappor/go-dashcam/overlay"
@@ -50,7 +52,7 @@ func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage]
 
 	err := gps.ReadSentences(r, func(s gps.Sentence) {
 		fix.Update(s)
-		text := barText(fix, speedunit)
+		text := barText(fix, speedunit, time.Now(), clock.Synced(clock.TimesyncdMarker))
 
 		// Don't update if there are no updates
 		if text == lastText {

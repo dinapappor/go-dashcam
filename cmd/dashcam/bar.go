@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"image"
+	"log"
 	"math"
+	"sync/atomic"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/gps"
+	"github.com/dinapappor/go-dashcam/overlay"
 )
 
 type barImage struct {
@@ -49,4 +53,46 @@ func barText(fix gps.Fix, unit string, now time.Time, clockSynced bool) string {
 		}
 	}
 	return fmt.Sprintf("--- %s  ---------- --:--:--  No GPS fix", speedUnit)
+}
+
+func barLoop(ctx context.Context, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedUnit string, fixes <-chan gps.Fix) {
+
+	var lastText string
+	var fix gps.Fix
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// we're shutting down
+			return
+		case <-ticker.C:
+		case fix = <-fixes:
+		}
+
+		text := barText(fix, speedUnit, barNow(), barClockSynced())
+
+		if text == lastText {
+			continue
+		}
+		barConfig.Text = text
+		g, a, err := overlay.RenderOverlay(barConfig)
+		if err != nil {
+			log.Printf("Could not render bottom bar: %v", err)
+			continue
+		}
+
+		// Now write to the atomic pointer image
+		bar.Store(
+			&barImage{
+				gray:  g,
+				alpha: a,
+			},
+		)
+
+		// Keep for next comparison
+		lastText = text
+	}
+
 }

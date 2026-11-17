@@ -37,21 +37,27 @@ func startBar(t *testing.T, text string) *atomic.Pointer[barImage] {
 	return &bar
 }
 
-func assertBarText(t *testing.T, bar *atomic.Pointer[barImage], text string) {
-	t.Helper()
+func barShows(bar *atomic.Pointer[barImage], text string) bool {
 	cfg := testBarConfig()
 	cfg.Text = text
 	wantGray, wantAlpha, err := overlay.RenderOverlay(cfg)
 	if err != nil {
-		t.Fatalf("render expected bar: %v", err)
+		return false
 	}
 	got := bar.Load()
-	if got == nil {
-		t.Fatal("bar is nil")
+	return got != nil && bytes.Equal(got.gray.Pix, wantGray.Pix) && bytes.Equal(got.alpha.Pix, wantAlpha.Pix)
+}
+
+func waitForBarText(t *testing.T, bar *atomic.Pointer[barImage], text string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if barShows(bar, text) {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	if !bytes.Equal(got.gray.Pix, wantGray.Pix) || !bytes.Equal(got.alpha.Pix, wantAlpha.Pix) {
-		t.Errorf("bar does not show %q", text)
-	}
+	t.Errorf("bar does not show %q after %v", text, timeout)
 }
 
 func useUTC(t *testing.T) {
@@ -69,90 +75,193 @@ func fakeBarClock(t *testing.T, now time.Time, synced bool) {
 	t.Cleanup(func() { barNow, barClockSynced = oldNow, oldSynced })
 }
 
-func TestReadGPSUpdatesBar(t *testing.T) {
-	useUTC(t)
-	fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), false)
+func readAllFixes(t *testing.T, input string) []gps.Fix {
+	t.Helper()
+	fixes := make(chan gps.Fix, 32)
+	err := readGPS(context.Background(), io.NopCloser(strings.NewReader(input)), fixes)
+	if err != nil {
+		t.Fatalf("readGPS: %v", err)
+	}
+	close(fixes)
+	var got []gps.Fix
+	for fix := range fixes {
+		got = append(got, fix)
+	}
+	return got
+}
 
+func TestReadGPSSendsFixes(t *testing.T) {
 	validRMC := nmeaLine("GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W")
 	noFixRMC := nmeaLine("GPRMC,123520,V,,,,,,,230394,,,N")
 	gga := nmeaLine("GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,")
 
 	tests := []struct {
-		name   string
-		input  string
-		unit   string
-		synced bool
-		want   string
+		name           string
+		input          string
+		wantCount      int
+		wantValid      bool
+		wantSpeedKts   float64
+		wantSatellites int
 	}{
-		{name: "valid fix in km/h", input: validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
-		{name: "valid fix in mph", input: validRMC, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167"},
-		{name: "fix lost", input: validRMC + noFixRMC, unit: "km/h", want: "--- km/h  ---------- --:--:--  No GPS fix"},
-		{name: "GGA alone is not a fix", input: gga, unit: "km/h", want: "--- km/h  ---------- --:--:--  No GPS fix"},
-		{name: "padding and unsupported sentences are skipped", input: "\n\n" + nmeaLine("GPGSV,1,1,00") + validRMC + "\n", unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
-		{name: "last fix wins", input: noFixRMC + validRMC, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
-		{name: "fix lost with synced clock shows clock time", input: validRMC + noFixRMC, unit: "km/h", synced: true, want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
-		{name: "GGA alone with synced clock shows clock time", input: gga, unit: "km/h", synced: true, want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
-		{name: "valid fix with synced clock uses GPS time", input: validRMC, unit: "km/h", synced: true, want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "valid RMC", input: validRMC, wantCount: 1, wantValid: true, wantSpeedKts: 22.4},
+		{name: "fix lost", input: validRMC + noFixRMC, wantCount: 2, wantValid: false},
+		{name: "GGA alone is not a fix", input: gga, wantCount: 1, wantValid: false, wantSatellites: 8},
+		{name: "RMC then GGA keeps both", input: validRMC + gga, wantCount: 2, wantValid: true, wantSpeedKts: 22.4, wantSatellites: 8},
+		{name: "padding, unsupported and bad sentences are skipped", input: "\n\n" + nmeaLine("GPGSV,1,1,00") + "$GPRMC,bad*00\r\n" + validRMC + "\n", wantCount: 1, wantValid: true, wantSpeedKts: 22.4},
+		{name: "last fix wins", input: noFixRMC + validRMC, wantCount: 2, wantValid: true, wantSpeedKts: 22.4},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), tt.synced)
-			bar := startBar(t, "start")
-			r := io.NopCloser(strings.NewReader(tt.input))
-
-			err := readGPS(context.Background(), r, bar, testBarConfig(), tt.unit)
-			if err != nil {
-				t.Fatalf("readGPS: %v", err)
+			got := readAllFixes(t, tt.input)
+			if len(got) != tt.wantCount {
+				t.Fatalf("got %d fixes, want %d", len(got), tt.wantCount)
 			}
-			assertBarText(t, bar, tt.want)
+			last := got[len(got)-1]
+			if last.RMC.Valid != tt.wantValid {
+				t.Errorf("RMC.Valid = %v, want %v", last.RMC.Valid, tt.wantValid)
+			}
+			if last.RMC.SpeedKts != tt.wantSpeedKts {
+				t.Errorf("RMC.SpeedKts = %v, want %v", last.RMC.SpeedKts, tt.wantSpeedKts)
+			}
+			if last.GGA.Satellites != tt.wantSatellites {
+				t.Errorf("GGA.Satellites = %v, want %v", last.GGA.Satellites, tt.wantSatellites)
+			}
 		})
 	}
 }
 
-func TestReadGPSEmptyInputKeepsBar(t *testing.T) {
-	bar := startBar(t, "start")
-	before := bar.Load()
-
-	err := readGPS(context.Background(), io.NopCloser(strings.NewReader("")), bar, testBarConfig(), "km/h")
-	if err != nil {
-		t.Fatalf("readGPS: %v", err)
-	}
-	if bar.Load() != before {
-		t.Error("bar changed without any GPS sentences")
+func TestReadGPSEmptyInputSendsNothing(t *testing.T) {
+	if got := readAllFixes(t, ""); len(got) != 0 {
+		t.Errorf("got %d fixes, want 0", len(got))
 	}
 }
 
 func TestReadGPSReaderError(t *testing.T) {
 	readErr := errors.New("bus gone")
-	bar := startBar(t, "start")
+	fixes := make(chan gps.Fix, 1)
 
-	err := readGPS(context.Background(), io.NopCloser(iotest.ErrReader(readErr)), bar, testBarConfig(), "km/h")
+	err := readGPS(context.Background(), io.NopCloser(iotest.ErrReader(readErr)), fixes)
 	if !errors.Is(err, readErr) {
 		t.Fatalf("readGPS error = %v, want wrapped %v", err, readErr)
 	}
 }
 
-func TestReadGPSStopsOnCancel(t *testing.T) {
+func waitForReturn(t *testing.T, done <-chan error, what string) {
+	t.Helper()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("%s after cancel = %v, want nil", what, err)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("%s did not return after cancel", what)
+	}
+}
+
+func TestReadGPSStopsOnCancelWhileReading(t *testing.T) {
 	pr, pw := io.Pipe()
 	defer pw.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	bar := startBar(t, "start")
-
 	done := make(chan error, 1)
 	go func() {
-		done <- readGPS(ctx, pr, bar, testBarConfig(), "km/h")
+		done <- readGPS(ctx, pr, make(chan gps.Fix))
 	}()
 
 	cancel()
+	waitForReturn(t, done, "readGPS")
+}
 
+func TestReadGPSStopsOnCancelWhileSending(t *testing.T) {
+	pr, pw := io.Pipe()
+	defer pw.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	unread := make(chan gps.Fix)
+	done := make(chan error, 1)
+	go func() {
+		done <- readGPS(ctx, pr, unread)
+	}()
+
+	pw.Write([]byte(nmeaLine("GPRMC,123520,V,,,,,,,230394,,,N")))
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+	waitForReturn(t, done, "readGPS")
+}
+
+func runBarLoop(t *testing.T, fixes <-chan gps.Fix, unit string) (*atomic.Pointer[barImage], context.CancelFunc, <-chan struct{}) {
+	t.Helper()
+	bar := startBar(t, "start")
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		barLoop(ctx, bar, testBarConfig(), unit, fixes)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		<-done
+	})
+	return bar, cancel, done
+}
+
+func TestBarLoopDrawsFixes(t *testing.T) {
+	useUTC(t)
+	fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), true)
+
+	valid := gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
+
+	tests := []struct {
+		name  string
+		fixes []gps.Fix
+		unit  string
+		want  string
+	}{
+		{name: "valid fix in km/h", fixes: []gps.Fix{valid}, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "valid fix in mph", fixes: []gps.Fix{valid}, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "fix lost shows clock time", fixes: []gps.Fix{valid, {}}, unit: "km/h", want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixes := make(chan gps.Fix)
+			bar, _, _ := runBarLoop(t, fixes, tt.unit)
+			for _, fix := range tt.fixes {
+				fixes <- fix
+			}
+			waitForBarText(t, bar, tt.want, 500*time.Millisecond)
+		})
+	}
+}
+
+func TestBarLoopTicksWithoutGPS(t *testing.T) {
+	useUTC(t)
+
+	tests := []struct {
+		name   string
+		synced bool
+		want   string
+	}{
+		{name: "synced clock shows time", synced: true, want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
+		{name: "unsynced clock shows dashes", synced: false, want: "--- km/h  ---------- --:--:--  No GPS fix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), tt.synced)
+			bar, _, _ := runBarLoop(t, make(chan gps.Fix), "km/h")
+			waitForBarText(t, bar, tt.want, 2*time.Second)
+		})
+	}
+}
+
+func TestBarLoopStopsOnCancel(t *testing.T) {
+	_, cancel, done := runBarLoop(t, make(chan gps.Fix), "km/h")
+	cancel()
 	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatalf("readGPS after cancel = %v, want nil", err)
-		}
+	case <-done:
 	case <-time.After(time.Second):
-		t.Fatal("readGPS did not return after cancel")
+		t.Fatal("barLoop did not return after cancel")
 	}
 }

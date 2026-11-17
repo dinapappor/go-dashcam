@@ -4,16 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/clock"
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
-	"github.com/dinapappor/go-dashcam/overlay"
 )
 
 func openGPS(cfg config.GPSConfig) (io.ReadWriteCloser, error) {
@@ -44,7 +41,7 @@ var barClockSynced = func() bool {
 	return clock.Synced(clock.TimesyncdMarker)
 }
 
-func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage], barConfig overlay.Config, speedunit string) error {
+func readGPS(ctx context.Context, r io.ReadCloser, fixes chan<- gps.Fix) error {
 
 	defer r.Close()
 
@@ -54,35 +51,13 @@ func readGPS(ctx context.Context, r io.ReadCloser, bar *atomic.Pointer[barImage]
 	defer stop()
 
 	var fix gps.Fix
-	var lastText string
 
 	err := gps.ReadSentences(r, func(s gps.Sentence) {
 		fix.Update(s)
-		text := barText(fix, speedunit, barNow(), barClockSynced())
-
-		// Don't update if there are no updates
-		if text == lastText {
-			return
+		select {
+		case fixes <- fix:
+		case <-ctx.Done():
 		}
-
-		barConfig.Text = text
-		g, a, err := overlay.RenderOverlay(barConfig)
-
-		if err != nil {
-			log.Printf("Could not render bottom bar: %v", err)
-			return
-		}
-
-		// Now write to the atomic pointer image
-		bar.Store(
-			&barImage{
-				gray:  g,
-				alpha: a,
-			},
-		)
-
-		// Keep for next comparison
-		lastText = text
 
 	})
 

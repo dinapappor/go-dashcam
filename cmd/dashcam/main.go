@@ -88,6 +88,10 @@ func main() {
 		},
 	)
 
+	fixes := make(chan gps.Fix)
+
+	go barLoop(ctx, &bottomBar, bottomBarOverlayConfig, dashcamConfig.SpeedUnit, fixes)
+
 	if dashcamConfig.GPSConfig != nil {
 		gpsReader, err := openGPS(*dashcamConfig.GPSConfig)
 		if err != nil {
@@ -108,9 +112,7 @@ func main() {
 				err := readGPS(
 					ctx,
 					gpsReader,
-					&bottomBar,
-					bottomBarOverlayConfig,
-					dashcamConfig.SpeedUnit,
+					fixes,
 				)
 
 				if err != nil {

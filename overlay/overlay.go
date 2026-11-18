@@ -1,11 +1,12 @@
 package overlay
 
 import (
+	_ "embed"
 	"fmt"
 	"image"
+	"math"
 
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/gomono"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 )
@@ -16,6 +17,9 @@ type Config struct {
 	Width       int // 0 by default, does not get set for dashcam title
 }
 
+//go:embed DepartureMono-Regular.otf
+var departureMono []byte
+
 func RenderOverlay(cfg Config) (*image.Gray, *image.Alpha, error) {
 	if cfg.Width < 0 {
 		return nil, nil, fmt.Errorf("Width can not be negative, got: %d", cfg.Width)
@@ -23,10 +27,14 @@ func RenderOverlay(cfg Config) (*image.Gray, *image.Alpha, error) {
 	if cfg.FrameHeight <= 0 {
 		return nil, nil, fmt.Errorf("Cant calculate font size without frame height")
 	}
-	// Calculate font size from frame height
-	fontSize := float64(cfg.FrameHeight) * 0.02
 
-	gomonofont, err := opentype.Parse(gomono.TTF)
+	steps := math.Round(float64(cfg.FrameHeight) * 0.02 / 11)
+	steps = max(steps, 1)
+
+	// Calculate font size from frame height
+	fontSize := steps * 11
+
+	gomonofont, err := opentype.Parse(departureMono)
 	if err != nil {
 		// we return nil because image.gray and alpha are pointers
 		return nil, nil, fmt.Errorf("Error loading font: %w", err)

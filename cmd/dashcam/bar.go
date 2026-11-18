@@ -13,6 +13,9 @@ import (
 	"github.com/dinapappor/go-dashcam/overlay"
 )
 
+// maybe do this configurable in the future
+const minSpeedKts = 1.08 // 2 km/h or 1.23 mph because of drift
+
 type barImage struct {
 	gray  *image.Gray
 	alpha *image.Alpha
@@ -39,6 +42,11 @@ func barText(fix gps.Fix, unit string, now time.Time, clockSynced bool) string {
 	} else {
 		speedUnit = "km/h"
 		speed = fix.RMC.KMH()
+	}
+
+	// to not get speeds while standing still
+	if fix.RMC.SpeedKts < minSpeedKts {
+		speed = 0
 	}
 
 	if fix.RMC.Valid {

@@ -63,8 +63,26 @@ func TestBarText(t *testing.T) {
 		{
 			name: "rounds speed up",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 0.3, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  1 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.5, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "  3 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+		},
+		{
+			name: "drift below threshold shows zero",
+			unit: "km/h",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+		},
+		{
+			name: "drift below threshold shows zero in mph",
+			unit: "mph",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "  0 mph  2026-11-14 00:30:05  N59.3293 E018.0686",
+		},
+		{
+			name: "speed at threshold is shown",
+			unit: "km/h",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.08, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "  2 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "converts knots to rounded mph",

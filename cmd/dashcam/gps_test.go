@@ -256,6 +256,54 @@ func TestBarLoopTicksWithoutGPS(t *testing.T) {
 	}
 }
 
+func movableBarClock(t *testing.T, start time.Time) func(time.Duration) {
+	t.Helper()
+	var now atomic.Pointer[time.Time]
+	now.Store(&start)
+	oldNow, oldSynced := barNow, barClockSynced
+	barNow = func() time.Time { return *now.Load() }
+	barClockSynced = func() bool { return true }
+	t.Cleanup(func() { barNow, barClockSynced = oldNow, oldSynced })
+	return func(d time.Duration) {
+		later := now.Load().Add(d)
+		now.Store(&later)
+	}
+}
+
+func TestBarLoopFixAge(t *testing.T) {
+	useUTC(t)
+	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	valid := gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
+	validText := " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"
+
+	tests := []struct {
+		name    string
+		advance time.Duration
+		want    string
+	}{
+		{name: "fresh fix is kept", advance: 2 * time.Second, want: validText},
+		{name: "fix at max age is kept", advance: maxFixAge, want: validText},
+		{name: "stale fix shows no fix", advance: 4 * time.Second, want: "--- km/h  2026-11-18 12:00:04  No GPS fix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			advance := movableBarClock(t, start)
+			fixes := make(chan gps.Fix)
+			bar, _, _ := runBarLoop(t, fixes, "km/h")
+
+			fixes <- valid
+			waitForBarText(t, bar, validText, 500*time.Millisecond)
+
+			advance(tt.advance)
+			time.Sleep(1200 * time.Millisecond)
+			if !barShows(bar, tt.want) {
+				t.Errorf("after %v bar does not show %q", tt.advance, tt.want)
+			}
+		})
+	}
+}
+
 func TestBarLoopStopsOnCancel(t *testing.T) {
 	_, cancel, done := runBarLoop(t, make(chan gps.Fix), "km/h")
 	cancel()

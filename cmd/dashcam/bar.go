@@ -16,6 +16,9 @@ import (
 // maybe do this configurable in the future
 const minSpeedKts = 1.08 // 2 km/h or 1.23 mph because of drift
 
+// if we lose fix we make sure we show NO GPS FIX no later than 3 seconds after last good fix
+const maxFixAge = 3 * time.Second
+
 type barImage struct {
 	gray  *image.Gray
 	alpha *image.Alpha
@@ -67,6 +70,7 @@ func barLoop(ctx context.Context, bar *atomic.Pointer[barImage], barConfig overl
 
 	var lastText string
 	var fix gps.Fix
+	var lastFixTime time.Time
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -77,6 +81,13 @@ func barLoop(ctx context.Context, bar *atomic.Pointer[barImage], barConfig overl
 			return
 		case <-ticker.C:
 		case fix = <-fixes:
+			lastFixTime = barNow()
+		}
+
+		// if we havent had an update for 3 secs
+		// we treat it as no fix
+		if barNow().Sub(lastFixTime) > maxFixAge {
+			fix = gps.Fix{}
 		}
 
 		text := barText(fix, speedUnit, barNow(), barClockSynced())

@@ -52,7 +52,7 @@ func barText(fix gps.Fix, unit string, now time.Time, clockSynced bool) string {
 		speed = 0
 	}
 
-	if fix.RMC.Valid {
+	if fix.Trusted() {
 		lat := formatCoordinate(fix.RMC.Latitude, "N", "S", 7)
 		lon := formatCoordinate(fix.RMC.Longitude, "E", "W", 8)
 		timeText := fix.RMC.Time.Local().Format("2006-01-02 15:04:05")

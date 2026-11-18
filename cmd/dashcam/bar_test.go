@@ -7,6 +7,8 @@ import (
 	"github.com/dinapappor/go-dashcam/gps"
 )
 
+var trustedGGA = gps.GGA{FixQuality: gps.FIX_VALID, Satellites: 8, HDOP: 1.2}
+
 func TestBarText(t *testing.T) {
 	oldLocal := time.Local
 	time.Local = time.FixedZone("TEST", 2*60*60)
@@ -45,61 +47,73 @@ func TestBarText(t *testing.T) {
 		{
 			name: "valid fix with zero speed",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "converts knots to rounded km/h",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: " 19 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "three digit speed fills the slot",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "141 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "rounds speed up",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.5, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.5, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "  3 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "drift below threshold shows zero",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "drift below threshold shows zero in mph",
 			unit: "mph",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "  0 mph  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "speed at threshold is shown",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 1.08, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.08, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: "  2 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+		},
+		{
+			name: "valid RMC with HDOP at limit is not trusted",
+			unit: "km/h",
+			fix:  gps.Fix{GGA: gps.GGA{FixQuality: gps.FIX_VALID, Satellites: 4, HDOP: 5}, RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "--- km/h  ---------- --:--:--  No GPS fix",
+		},
+		{
+			name: "valid RMC without GGA fix is not trusted",
+			unit: "km/h",
+			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			want: "--- km/h  ---------- --:--:--  No GPS fix",
 		},
 		{
 			name: "converts knots to rounded mph",
 			unit: "mph",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			want: " 12 mph  2026-11-14 00:30:05  N59.3293 E018.0686",
 		},
 		{
 			name: "southern and western hemispheres",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: -33.8688, Longitude: -151.2093}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: -33.8688, Longitude: -151.2093}},
 			want: "  0 km/h  2026-11-14 00:30:05  S33.8688 W151.2093",
 		},
 		{
 			name: "small coordinates are zero padded",
 			unit: "km/h",
-			fix:  gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 9.5, Longitude: 4.25}},
+			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 9.5, Longitude: 4.25}},
 			want: "  0 km/h  2026-11-14 00:30:05  N09.5000 E004.2500",
 		},
 		{
@@ -137,7 +151,7 @@ func TestBarText(t *testing.T) {
 		{
 			name:   "valid fix uses GPS time, not clock time",
 			unit:   "km/h",
-			fix:    gps.Fix{RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
+			fix:    gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			now:    now,
 			synced: true,
 			want:   "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
@@ -157,7 +171,7 @@ func TestBarText(t *testing.T) {
 func TestBarTextKeepsColumns(t *testing.T) {
 	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
 	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
-	withFix := barText(gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h", now, false)
+	withFix := barText(gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h", now, false)
 
 	for _, synced := range []bool{false, true} {
 		noFix := barText(gps.Fix{}, "km/h", now, synced)

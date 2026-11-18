@@ -210,7 +210,7 @@ func TestBarLoopDrawsFixes(t *testing.T) {
 	useUTC(t)
 	fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), true)
 
-	valid := gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
+	valid := gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
 
 	tests := []struct {
 		name  string
@@ -273,7 +273,7 @@ func movableBarClock(t *testing.T, start time.Time) func(time.Duration) {
 func TestBarLoopFixAge(t *testing.T) {
 	useUTC(t)
 	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
-	valid := gps.Fix{RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
+	valid := gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
 	validText := " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"
 
 	tests := []struct {

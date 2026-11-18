@@ -218,8 +218,8 @@ func TestBarLoopDrawsFixes(t *testing.T) {
 		unit  string
 		want  string
 	}{
-		{name: "valid fix in km/h", fixes: []gps.Fix{valid}, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"},
-		{name: "valid fix in mph", fixes: []gps.Fix{valid}, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167"},
+		{name: "valid fix in km/h", fixes: []gps.Fix{valid}, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅ "},
+		{name: "valid fix in mph", fixes: []gps.Fix{valid}, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅ "},
 		{name: "fix lost shows clock time", fixes: []gps.Fix{valid, {}}, unit: "km/h", want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
 	}
 
@@ -274,7 +274,7 @@ func TestBarLoopFixAge(t *testing.T) {
 	useUTC(t)
 	start := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
 	valid := gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 22.4, Time: time.Date(1994, 3, 23, 12, 35, 19, 0, time.UTC), Latitude: 48.1173, Longitude: 11.516667}}
-	validText := " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167"
+	validText := " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅ "
 
 	tests := []struct {
 		name    string

@@ -34,6 +34,22 @@ func formatCoordinate(value float64, positive, negative string, width int) strin
 	return fmt.Sprintf("%s%0*.4f", letter, width, math.Abs(value))
 }
 
+func signalBars(fix gps.Fix) string {
+	if !fix.Trusted() {
+		return "    "
+	}
+	switch {
+	case fix.GGA.HDOP < 1:
+		return "▁▃▅▇"
+	case fix.GGA.HDOP < 2:
+		return "▁▃▅ "
+	case fix.GGA.HDOP < 5:
+		return "▁▃  "
+	default:
+		return "    "
+	}
+}
+
 func barText(fix gps.Fix, unit string, now time.Time, clockSynced bool) string {
 
 	var speedUnit string
@@ -56,7 +72,8 @@ func barText(fix gps.Fix, unit string, now time.Time, clockSynced bool) string {
 		lat := formatCoordinate(fix.RMC.Latitude, "N", "S", 7)
 		lon := formatCoordinate(fix.RMC.Longitude, "E", "W", 8)
 		timeText := fix.RMC.Time.Local().Format("2006-01-02 15:04:05")
-		return fmt.Sprintf("%3.0f %s  %s  %s %s", speed, speedUnit, timeText, lat, lon)
+		signalBar := signalBars(fix)
+		return fmt.Sprintf("%3.0f %s  %s  %s %s  %s", speed, speedUnit, timeText, lat, lon, signalBar)
 	} else {
 		if clockSynced {
 			ntpDateTime := now.Local().Format("2006-01-02 15:04:05")

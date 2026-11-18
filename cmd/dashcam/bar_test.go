@@ -48,43 +48,43 @@ func TestBarText(t *testing.T) {
 			name: "valid fix with zero speed",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "converts knots to rounded km/h",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: " 19 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: " 19 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "three digit speed fills the slot",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "141 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "141 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "rounds speed up",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.5, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  3 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "  3 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "drift below threshold shows zero",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "drift below threshold shows zero in mph",
 			unit: "mph",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.07, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  0 mph  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "  0 mph  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "speed at threshold is shown",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 1.08, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: "  2 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: "  2 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "valid RMC with HDOP at limit is not trusted",
@@ -102,19 +102,19 @@ func TestBarText(t *testing.T) {
 			name: "converts knots to rounded mph",
 			unit: "mph",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 10, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
-			want: " 12 mph  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want: " 12 mph  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 		{
 			name: "southern and western hemispheres",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: -33.8688, Longitude: -151.2093}},
-			want: "  0 km/h  2026-11-14 00:30:05  S33.8688 W151.2093",
+			want: "  0 km/h  2026-11-14 00:30:05  S33.8688 W151.2093  ▁▃▅ ",
 		},
 		{
 			name: "small coordinates are zero padded",
 			unit: "km/h",
 			fix:  gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 9.5, Longitude: 4.25}},
-			want: "  0 km/h  2026-11-14 00:30:05  N09.5000 E004.2500",
+			want: "  0 km/h  2026-11-14 00:30:05  N09.5000 E004.2500  ▁▃▅ ",
 		},
 		{
 			name:   "no GPS fix with synced clock shows local clock time",
@@ -154,7 +154,7 @@ func TestBarText(t *testing.T) {
 			fix:    gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}},
 			now:    now,
 			synced: true,
-			want:   "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686",
+			want:   "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅ ",
 		},
 	}
 
@@ -211,6 +211,35 @@ func TestFormatCoordinate(t *testing.T) {
 			got := formatCoordinate(tt.value, tt.positive, tt.negative, tt.width)
 			if got != tt.want {
 				t.Errorf("formatCoordinate(%v) = %q, want %q", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSignalBars(t *testing.T) {
+	withHDOP := func(hdop float64) gps.Fix {
+		return gps.Fix{RMC: gps.RMC{Valid: true}, GGA: gps.GGA{FixQuality: gps.FIX_VALID, Satellites: 8, HDOP: hdop}}
+	}
+
+	tests := []struct {
+		name string
+		fix  gps.Fix
+		want string
+	}{
+		{name: "no fix is blank", fix: gps.Fix{}, want: "    "},
+		{name: "untrusted fix quality is blank", fix: gps.Fix{RMC: gps.RMC{Valid: true}, GGA: gps.GGA{HDOP: 0.5}}, want: "    "},
+		{name: "HDOP at limit is blank", fix: withHDOP(5), want: "    "},
+		{name: "HDOP below 1 is four bars", fix: withHDOP(0.5), want: "▁▃▅▇"},
+		{name: "HDOP 1 is three bars", fix: withHDOP(1), want: "▁▃▅ "},
+		{name: "HDOP 1.5 is three bars", fix: withHDOP(1.5), want: "▁▃▅ "},
+		{name: "HDOP 2 is two bars", fix: withHDOP(2), want: "▁▃  "},
+		{name: "HDOP 4.99 is two bars", fix: withHDOP(4.99), want: "▁▃  "},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := signalBars(tt.fix); got != tt.want {
+				t.Errorf("signalBars() = %q, want %q", got, tt.want)
 			}
 		})
 	}

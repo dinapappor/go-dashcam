@@ -28,6 +28,25 @@ const (
 const (
 	cfgMSG  = 0x01
 	cfgRATE = 0x08
+	cfgNAV5 = 0x24
+)
+
+// dynmodel
+const (
+	dynModelPortable     = 0
+	dynModelStationary   = 2
+	dynModelPedestrian   = 3
+	dynModelAutomotive   = 4
+	dynModelAtSea        = 5
+	dynModelAirborneLt1g = 6
+	dynModelAirborneLt2g = 7
+	dynModelAirborneLt4g = 8
+)
+
+// on/off
+const (
+	ON  = 0x01
+	OFF = 0x00
 )
 
 // This is basically like formatSentence for pmtk
@@ -80,7 +99,7 @@ func Configure(w io.Writer) error {
 	unwantedSentences := []byte{nmeaGLL, nmeaGSA, nmeaGSV, nmeaVTG, nmeaGST}
 
 	for _, us := range unwantedSentences {
-		err := Send(w, classCFG, cfgMSG, []byte{classNMEA, us, 0x00})
+		err := Send(w, classCFG, cfgMSG, []byte{classNMEA, us, OFF})
 
 		if err != nil {
 			return fmt.Errorf("Unable to shut off sentence id 0x%02X: %w", us, err)
@@ -91,6 +110,17 @@ func Configure(w io.Writer) error {
 	err := Send(w, classCFG, cfgRATE, []byte{0xC8, 0x00, 0x01, 0x00, 0x01, 0x00})
 	if err != nil {
 		return fmt.Errorf("Unable to set update rate to 5hz: %w", err)
+	}
+
+	// Set navmode, hardcoded to automotive for now
+	payload := make([]byte, 36)
+	payload[0] = ON
+	payload[2] = dynModelAutomotive
+
+	err = Send(w, classCFG, cfgNAV5, payload)
+
+	if err != nil {
+		return fmt.Errorf("Unable to set navmode: %w", err)
 	}
 	return nil
 }

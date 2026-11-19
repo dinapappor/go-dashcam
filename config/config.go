@@ -94,6 +94,8 @@ func ParseConfig(path string) (Config, error) {
 		switch config.GPSConfig.Protocol {
 		case "", "pmtk":
 			//Cool
+		case "ubx":
+			// Also cool
 
 		default:
 			return Config{}, fmt.Errorf("Unknown protocol %q", config.GPSConfig.Protocol)

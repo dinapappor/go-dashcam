@@ -13,6 +13,7 @@ import (
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
 	"github.com/dinapappor/go-dashcam/gps/pmtk"
+	"github.com/dinapappor/go-dashcam/gps/ubx"
 	"github.com/dinapappor/go-dashcam/overlay"
 	"github.com/dinapappor/go-dashcam/recording"
 	"github.com/dinapappor/go-dashcam/video"
@@ -98,11 +99,17 @@ func main() {
 			log.Printf("GPS disabled: %v", err)
 		} else {
 			// Configure a good base
-			if dashcamConfig.GPSConfig.Protocol == "pmtk" {
+			switch dashcamConfig.GPSConfig.Protocol {
+			case "pmtk":
 				err := pmtk.Configure(gpsReader)
 
 				if err != nil {
 					log.Printf("Unable to configure PMTK: %v", err)
+				}
+			case "ubx":
+				err := ubx.Configure(gpsReader)
+				if err != nil {
+					log.Printf("Unable to configure ubx: %v", err)
 				}
 			}
 			gpsDone := make(chan struct{})

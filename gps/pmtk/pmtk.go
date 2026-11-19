@@ -27,18 +27,25 @@ func Configure(w io.Writer) error {
 	// Statically configure these for now
 	// later maybe something for config
 
+	// baudrate
+	err := Send(w, "PMTK251,115200")
+
+	if err != nil {
+		return fmt.Errorf("Unable to set baudrate: %w", err)
+	}
+
 	// RMC+GGA
-	err := Send(w, "PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
+	err = Send(w, "PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")
 
 	if err != nil {
 		return fmt.Errorf("Unable to set RMC+GGA: %w", err)
 	}
 
-	// 5 Hz updates
-	err = Send(w, "PMTK220,200")
+	// 10 Hz updates
+	err = Send(w, "PMTK220,100")
 
 	if err != nil {
-		return fmt.Errorf("Unable to set 5Hz updates: %w", err)
+		return fmt.Errorf("Unable to set 10Hz updates: %w", err)
 	}
 
 	return nil

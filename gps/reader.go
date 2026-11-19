@@ -2,7 +2,9 @@ package gps
 
 import (
 	"bufio"
+	"errors"
 	"io"
+	"log"
 )
 
 type paddingFilter struct {
@@ -32,8 +34,12 @@ func ReadSentences(r io.Reader, handle func(Sentence)) error {
 	scanner := bufio.NewScanner(f)
 
 	for scanner.Scan() {
-		sentence, err := ParseNMEA(scanner.Text())
+		line := scanner.Text()
+		sentence, err := ParseNMEA(line)
 		if err != nil {
+			if !errors.Is(err, ErrUnsupported) {
+				log.Printf("%q, %v", line, err)
+			}
 			continue
 		}
 		handle(sentence)

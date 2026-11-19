@@ -23,6 +23,11 @@ func TestFormatSentence(t *testing.T) {
 			want: "$PMTK220,1000*1F\r\n",
 		},
 		{
+			name: "115200 baud",
+			body: "PMTK251,115200",
+			want: "$PMTK251,115200*1F\r\n",
+		},
+		{
 			name: "RMC and GGA only",
 			body: "PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0",
 			want: "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n",
@@ -107,8 +112,9 @@ func TestConfigureSendsCommandsInOrder(t *testing.T) {
 		t.Fatalf("Configure: %v", err)
 	}
 
-	want := "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n" +
-		"$PMTK220,200*2C\r\n"
+	want := "$PMTK251,115200*1F\r\n" +
+		"$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n" +
+		"$PMTK220,100*2F\r\n"
 	if got := buf.String(); got != want {
 		t.Errorf("Configure wrote %q, want %q", got, want)
 	}

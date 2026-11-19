@@ -9,6 +9,12 @@ Subject to change - for instance if we have multiple cameras in the future.
 {
     "dashcam_title": "Andreas Dashcam",
     "output_directory": "/path/to/storage",
+    "speed_unit": "kmh",
+    "gps_config": {
+        "type": "serial",
+        "device": "/dev/ttyACM0",
+        "protocol": "ubx"
+    },
     "video_config": {
         "video_source": "/dev/video4",
         "width": 1280,
@@ -27,6 +33,13 @@ Raspberry Pi with Camera Module 3 and the hardware H.264 encoder:
 {
     "dashcam_title": "Andreas Dashcam",
     "output_directory": "/path/to/storage",
+    "speed_unit": "kmh",
+    "gps_config": {
+        "type": "i2c",
+        "device": "/dev/i2c-1",
+        "address": "0x10",
+        "protocol": "pmtk"
+    },
     "video_config": {
         "video_source": "/dev/video0",
         "width": 1920,
@@ -65,12 +78,18 @@ For a Raspberry Pi 5 you'd likely use the below config seeing that it doesn't ha
 |---|---|
 | `dashcam_title` | The title of the dashcam in the top left corner. |
 | `output_directory` | Where recordings are saved. Defaults to `videos`; created if it does not exist. |
+| `speed_unit` | Speed shown in the bottom bar: `kmh` or `km/h` (default) or `mph`. |
 | `segmented` | `true` splits recordings into `segment_duration` pieces; `false` records one continuous file. |
 | `segment_duration` | Go duration such as `10s`, `1.5s` or `2m`. Required when `segmented` is `true`. |
 | `pixel_format` | `MJPG` (default, USB webcams) or `YU12` (raw frames, e.g. libcamera on a Pi). |
 | `encoder` | `software` (default, FFmpeg libx264) or `v4l2m2m` (hardware H.264, Pi 4 / Zero 2 W). |
 | `encoder_device` | Hardware encoder device. Required with `v4l2m2m`. |
-| `bitrate` | Bits per second for the hardware encoder. Required with `v4l2m2m`. |
+| `bitrate` | Bits per second for the hardware encoder. Optional; defaults to 10 Mbit/s from 1080p, otherwise 5 Mbit/s. |
+| `gps_config` | Optional. Leave it out to record without GPS. |
+| `gps_config.type` | `i2c` or `serial`. |
+| `gps_config.device` | GPS device, e.g. `/dev/i2c-1` or `/dev/ttyACM0`. |
+| `gps_config.address` | I2C address such as `0x10`. Only used with `i2c`. |
+| `gps_config.protocol` | `""` (plain NMEA, no configuration), `pmtk` (MediaTek) or `ubx` (u-blox). |
 
 ## Building it
 
@@ -129,10 +148,11 @@ Long-term goals include Linux and FreeBSD on ARM64, AMD64, and RISC-V. These are
 
 ## Supported platforms
 
-- Raspberry Pi zero 2w - at 1080p with 30 fps (~9% CPU usage in total).
+- Raspberry Pi zero 2w - at 1080p with 30 fps (~15% CPU usage in total).
 - Raspberry pi 3 - with 64 bit install of Raspberry Pi OS
 - Raspberry pi 4 - with 64 bit install of Raspberry Pi OS
 - amd64/x86_64 with usb webcamera.
 
 ## Supported GPS devices
-- pa1010d - confirmed working at 5Hz with gps+glonass. Other Mediatek GPS chipsets with PMTK protocol expected to work (if not, open up an issue).
+- pa1010d - confirmed working at 10Hz with gps+glonass. Other Mediatek GPS chipsets with PMTK protocol expected to work (if not, open up an issue).
+- ublox m8 usb dongle. (M8030) Confirmed working with gps+glonass+galileo and EGNOS at 5hz.

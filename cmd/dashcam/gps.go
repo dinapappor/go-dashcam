@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"syscall"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/clock"
@@ -24,7 +22,7 @@ func openGPS(cfg config.GPSConfig) (io.ReadWriteCloser, error) {
 		}
 		return f, nil
 	case "serial":
-		f, err := os.OpenFile(cfg.Device, os.O_RDWR|syscall.O_NOCTTY, 0)
+		f, err := gps.OpenSerial(cfg.Device)
 
 		if err != nil {
 			return nil, fmt.Errorf("Unable to open %s: %w", cfg.Device, err)

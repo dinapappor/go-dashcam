@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"strings"
 )
 
 type paddingFilter struct {
@@ -35,6 +36,16 @@ func ReadSentences(r io.Reader, handle func(Sentence)) error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		// cut lines at last $ instead of first
+		if i := strings.LastIndexByte(line, '$'); i > 0 {
+			line = line[i:]
+		}
+		// Sometimes we get empty lines, harmless
+		// but annoying
+		if line == "" {
+			continue
+		}
 		sentence, err := ParseNMEA(line)
 		if err != nil {
 			if !errors.Is(err, ErrUnsupported) {

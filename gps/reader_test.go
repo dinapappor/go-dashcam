@@ -1,8 +1,11 @@
 package gps
 
 import (
+	"bytes"
 	"errors"
 	"io"
+	"log"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -82,5 +85,63 @@ func TestReadSentencesReaderError(t *testing.T) {
 	}
 	if called {
 		t.Error("handle was called without any input")
+	}
+}
+
+func TestReadSentencesCleansLines(t *testing.T) {
+	rmc := "$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A"
+	gga := "$GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47"
+	ackMSG := "\xb5\x62\x05\x01\x02\x00\x06\x01\x0f\x38"
+	ackNAV5 := "\xb5\x62\x05\x01\x02\x00\x06\x24\x32\x5b"
+
+	tests := []struct {
+		name    string
+		input   string
+		want    []string
+		wantLog bool
+	}{
+		{
+			name:  "ack frame glued before RMC",
+			input: ackMSG + rmc + "\r\n",
+			want:  []string{"RMC"},
+		},
+		{
+			name:  "ack with $ byte (CFG-NAV5) glued before RMC",
+			input: ackMSG + ackNAV5 + rmc + "\r\n",
+			want:  []string{"RMC"},
+		},
+		{
+			name:  "empty lines are skipped quietly",
+			input: "\r\n" + rmc + "\r\n\r\n" + gga + "\r\n",
+			want:  []string{"RMC", "GGA"},
+		},
+		{
+			name:    "line without $ is logged and skipped",
+			input:   ackMSG + "\r\n" + gga + "\r\n",
+			want:    []string{"GGA"},
+			wantLog: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			log.SetOutput(&logs)
+			t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+			var kinds []string
+			err := ReadSentences(strings.NewReader(tt.input), func(s Sentence) {
+				kinds = append(kinds, s.Kind())
+			})
+			if err != nil {
+				t.Fatalf("ReadSentences returned error: %v", err)
+			}
+			if !slices.Equal(kinds, tt.want) {
+				t.Errorf("got kinds %v, want %v", kinds, tt.want)
+			}
+			if gotLog := logs.Len() > 0; gotLog != tt.wantLog {
+				t.Errorf("logged %q, want log %t", logs.String(), tt.wantLog)
+			}
+		})
 	}
 }

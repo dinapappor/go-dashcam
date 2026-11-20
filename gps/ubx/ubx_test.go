@@ -17,25 +17,25 @@ func TestFrame(t *testing.T) {
 		// measRate 100 ms (10 Hz), navRate 1, timeRef GPS
 		{
 			name:    "CFG-RATE 10 Hz",
-			class:   0x06,
-			id:      0x08,
+			class:   classCFG,
+			id:      cfgRATE,
 			payload: []byte{0x64, 0x00, 0x01, 0x00, 0x01, 0x00},
 			want:    []byte{0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0x64, 0x00, 0x01, 0x00, 0x01, 0x00, 0x7A, 0x12},
 		},
 		// measRate 1000 ms (1 Hz), navRate 1, timeRef GPS
 		{
 			name:    "CFG-RATE 1 Hz",
-			class:   0x06,
-			id:      0x08,
+			class:   classCFG,
+			id:      cfgRATE,
 			payload: []byte{0xE8, 0x03, 0x01, 0x00, 0x01, 0x00},
 			want:    []byte{0xB5, 0x62, 0x06, 0x08, 0x06, 0x00, 0xE8, 0x03, 0x01, 0x00, 0x01, 0x00, 0x01, 0x39},
 		},
 		// NMEA GSV (F0 03) at rate 0 = off
 		{
 			name:    "CFG-MSG GSV off",
-			class:   0x06,
-			id:      0x01,
-			payload: []byte{0xF0, 0x03, 0x00},
+			class:   classCFG,
+			id:      cfgMSG,
+			payload: []byte{classNMEA, nmeaGSV, OFF},
 			want:    []byte{0xB5, 0x62, 0x06, 0x01, 0x03, 0x00, 0xF0, 0x03, 0x00, 0xFD, 0x15},
 		},
 		// empty payload = poll for version
@@ -69,7 +69,7 @@ func TestFrame(t *testing.T) {
 func TestFrameLongPayloadLength(t *testing.T) {
 	payload := make([]byte, 300)
 
-	got := frame(0x06, 0x3E, payload)
+	got := frame(classCFG, 0x3E, payload)
 
 	if len(got) != 2+4+300+2 {
 		t.Fatalf("got %d bytes, want %d", len(got), 2+4+300+2)
@@ -83,7 +83,7 @@ func TestFrameKeepsPayload(t *testing.T) {
 	payload := []byte{0x64, 0x00, 0x01, 0x00, 0x01, 0x00}
 	original := bytes.Clone(payload)
 
-	frame(0x06, 0x08, payload)
+	frame(classCFG, cfgRATE, payload)
 
 	if !bytes.Equal(payload, original) {
 		t.Errorf("payload changed to % X, want % X", payload, original)
@@ -94,7 +94,7 @@ func TestSendWritesFrame(t *testing.T) {
 	var buf bytes.Buffer
 
 	// measRate 100 ms (10 Hz), navRate 1, timeRef GPS
-	err := Send(&buf, 0x06, 0x08, []byte{0x64, 0x00, 0x01, 0x00, 0x01, 0x00})
+	err := Send(&buf, classCFG, cfgRATE, []byte{0x64, 0x00, 0x01, 0x00, 0x01, 0x00})
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestSendTwoMessagesInOrder(t *testing.T) {
 	var buf bytes.Buffer
 
 	// NMEA GSV (F0 03) at rate 0 = off
-	if err := Send(&buf, 0x06, 0x01, []byte{0xF0, 0x03, 0x00}); err != nil {
+	if err := Send(&buf, classCFG, cfgMSG, []byte{classNMEA, nmeaGSV, OFF}); err != nil {
 		t.Fatalf("Send CFG-MSG: %v", err)
 	}
 	// empty payload = poll for version

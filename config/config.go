@@ -36,6 +36,7 @@ type GPSConfig struct {
 	Address      string `json:"address"`
 	AddressValue int    `json:"-"`        // a bit of cheating here
 	Protocol     string `json:"protocol"` // ie, PMTK, ubx etc
+	Aiding       *bool  `json:"aiding"`   // Ie, set time and/or last known location to speed up fix
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -99,6 +100,13 @@ func ParseConfig(path string) (Config, error) {
 
 		default:
 			return Config{}, fmt.Errorf("Unknown protocol %q", config.GPSConfig.Protocol)
+		}
+
+		// Set to true if nil. Setting it to false
+		// should be an explicit and deliberate decision
+		if config.GPSConfig.Aiding == nil {
+			poop := true
+			config.GPSConfig.Aiding = &poop
 		}
 	}
 

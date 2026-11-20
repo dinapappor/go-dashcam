@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
 )
 
 // NMEA message ids
@@ -17,11 +18,16 @@ const (
 	nmeaGST = 0x07
 )
 
-// message classes
+// classMGA message ids
+const (
+	MGAIni = 0x40
+)
 
+// message classes
 const (
 	classCFG  = 0x06
 	classNMEA = 0xF0
+	classMGA  = 0x13
 )
 
 // CFG message
@@ -48,6 +54,8 @@ const (
 	ON  = 0x01
 	OFF = 0x00
 )
+
+const MgaIniTypeTimeUTC = 0x10
 
 // This is basically like formatSentence for pmtk
 func frame(class byte, id byte, payload []byte) []byte {
@@ -122,5 +130,39 @@ func Configure(w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("Unable to set navmode: %w", err)
 	}
+	return nil
+}
+
+// if we have NTP time this might be useful to acquire a
+// fix faster
+func InitTime(w io.Writer, t time.Time) error {
+
+	// Hardcoding this because 2 was what I could
+	// find about ntp
+	var accuracySeconds uint16 = 2
+
+	utc := t.UTC()
+	payload := make([]byte, 24)
+
+	payload[0] = MgaIniTypeTimeUTC
+	payload[1] = 0x00
+	payload[2] = 0x00
+	payload[3] = 0x80
+	binary.LittleEndian.PutUint16(payload[4:6], uint16(utc.Year()))
+	payload[6] = byte(utc.Month())
+	payload[7] = byte(utc.Day())
+	payload[8] = byte(utc.Hour())
+	payload[9] = byte(utc.Minute())
+	payload[10] = byte(utc.Second())
+	payload[11] = 0x00
+	binary.LittleEndian.PutUint32(payload[12:16], uint32(utc.Nanosecond()))
+	binary.LittleEndian.PutUint16(payload[16:18], accuracySeconds)
+
+	err := Send(w, classMGA, MGAIni, payload)
+
+	if err != nil {
+		return fmt.Errorf("Could not send initial time to GPS: %w", err)
+	}
+
 	return nil
 }

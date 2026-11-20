@@ -358,3 +358,44 @@ func TestParseConfigGPS(t *testing.T) {
 		})
 	}
 }
+
+func TestParseConfigGPSAiding(t *testing.T) {
+	tests := []struct {
+		name    string
+		aiding  string
+		want    bool
+		wantErr bool
+	}{
+		{name: "missing defaults to on", aiding: ``, want: true},
+		{name: "explicit true", aiding: `,"aiding":true`, want: true},
+		{name: "explicit false", aiding: `,"aiding":false`, want: false},
+		{name: "null defaults to on", aiding: `,"aiding":null`, want: true},
+		{name: "string is rejected", aiding: `,"aiding":"yes"`, wantErr: true},
+		{name: "number is rejected", aiding: `,"aiding":1`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"gps_config":{"type":"serial","device":"/dev/ttyACM0","protocol":"ubx"` + tt.aiding + `},"video_config":{"width":1280,"height":720,"fps":30}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected aiding error, got %+v", cfg.GPSConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.GPSConfig == nil {
+				t.Fatal("GPSConfig is nil")
+			}
+			if cfg.GPSConfig.Aiding == nil {
+				t.Fatal("Aiding is nil, want it filled in by ParseConfig")
+			}
+			if got := *cfg.GPSConfig.Aiding; got != tt.want {
+				t.Errorf("Aiding = %t, want %t", got, tt.want)
+			}
+		})
+	}
+}

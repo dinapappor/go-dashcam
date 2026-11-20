@@ -111,6 +111,14 @@ func main() {
 				if err != nil {
 					log.Printf("Unable to configure ubx: %v", err)
 				}
+				// Try to set init time for ubx to get faster fixes
+				if clock.Synced(clock.TimesyncdMarker) && *dashcamConfig.GPSConfig.Aiding {
+					err = ubx.InitTime(gpsReader, time.Now())
+
+					if err != nil {
+						log.Printf("Unable to set initial time for gps(ubx): %v", err)
+					}
+				}
 			}
 			gpsDone := make(chan struct{})
 			// gps loop

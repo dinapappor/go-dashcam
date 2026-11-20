@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestFrame(t *testing.T) {
@@ -218,4 +219,99 @@ func (w *failAtWriter) Write(p []byte) (int, error) {
 		return 0, w.err
 	}
 	return len(p), nil
+}
+
+func TestInitTime(t *testing.T) {
+	plus2 := time.FixedZone("+02:00", 2*60*60)
+	minus5 := time.FixedZone("-05:00", -5*60*60)
+
+	afternoon := []byte{
+		0xB5, 0x62, 0x13, 0x40, 0x18, 0x00,
+		// type 0x10, version 0, ref 0, leapSecs -128 (unknown)
+		0x10, 0x00, 0x00, 0x80,
+		// 2026-11-20 13:45:30, reserved
+		0xEA, 0x07, 0x0B, 0x14, 0x0D, 0x2D, 0x1E, 0x00,
+		// ns 123456789
+		0x15, 0xCD, 0x5B, 0x07,
+		// tAccS 2, reserved, tAccNs 0
+		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0xA9, 0xEA,
+	}
+	newYearsEve := []byte{
+		0xB5, 0x62, 0x13, 0x40, 0x18, 0x00,
+		// type 0x10, version 0, ref 0, leapSecs -128 (unknown)
+		0x10, 0x00, 0x00, 0x80,
+		// 2025-12-31 23:59:59, reserved
+		0xE9, 0x07, 0x0C, 0x1F, 0x17, 0x3B, 0x3B, 0x00,
+		// ns 999999999
+		0xFF, 0xC9, 0x9A, 0x3B,
+		// tAccS 2, reserved, tAccNs 0
+		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x42, 0xC1,
+	}
+
+	tests := []struct {
+		name string
+		time time.Time
+		want []byte
+	}{
+		{
+			name: "UTC with nanoseconds",
+			time: time.Date(2026, 11, 20, 13, 45, 30, 123456789, time.UTC),
+			want: afternoon,
+		},
+		{
+			name: "same instant in +02:00",
+			time: time.Date(2026, 11, 20, 15, 45, 30, 123456789, plus2),
+			want: afternoon,
+		},
+		{
+			name: "no nanoseconds",
+			time: time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
+			want: []byte{
+				0xB5, 0x62, 0x13, 0x40, 0x18, 0x00,
+				// type 0x10, version 0, ref 0, leapSecs -128 (unknown)
+				0x10, 0x00, 0x00, 0x80,
+				// 2026-01-02 03:04:05, reserved
+				0xEA, 0x07, 0x01, 0x02, 0x03, 0x04, 0x05, 0x00,
+				// ns 0
+				0x00, 0x00, 0x00, 0x00,
+				// tAccS 2, reserved, tAccNs 0
+				0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0xFD, 0x07,
+			},
+		},
+		{
+			name: "last nanosecond of the year",
+			time: time.Date(2025, 12, 31, 23, 59, 59, 999999999, time.UTC),
+			want: newYearsEve,
+		},
+		{
+			name: "local date differs from UTC date",
+			time: time.Date(2025, 12, 31, 18, 59, 59, 999999999, minus5),
+			want: newYearsEve,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+
+			if err := InitTime(&buf, tt.time); err != nil {
+				t.Fatalf("InitTime: %v", err)
+			}
+			if got := buf.Bytes(); !bytes.Equal(got, tt.want) {
+				t.Errorf("InitTime wrote % X, want % X", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInitTimeWriteError(t *testing.T) {
+	writeErr := errors.New("device gone")
+
+	err := InitTime(failingWriter{err: writeErr}, time.Date(2026, 11, 20, 13, 45, 30, 0, time.UTC))
+	if !errors.Is(err, writeErr) {
+		t.Fatalf("InitTime error = %v, want wrapped %v", err, writeErr)
+	}
 }

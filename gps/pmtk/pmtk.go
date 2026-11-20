@@ -3,6 +3,7 @@ package pmtk
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/dinapappor/go-dashcam/gps"
 )
@@ -49,4 +50,16 @@ func Configure(w io.Writer) error {
 	}
 
 	return nil
+}
+
+func InitTime(w io.Writer, t time.Time) error {
+	// I am a genious here
+	timeString := t.UTC().Format("2006,01,02,15,04,05")
+	err := Send(w, fmt.Sprintf("PMTK740,%s", timeString))
+
+	if err != nil {
+		return fmt.Errorf("Could not send initial time to pmtk device: %w", err)
+	}
+	return nil
+
 }

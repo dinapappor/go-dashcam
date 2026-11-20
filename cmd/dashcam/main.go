@@ -106,6 +106,14 @@ func main() {
 				if err != nil {
 					log.Printf("Unable to configure PMTK: %v", err)
 				}
+				// Try to set init time for PMTK to get faster fixes
+				if clock.Synced(clock.TimesyncdMarker) && *dashcamConfig.GPSConfig.Aiding {
+					err = pmtk.InitTime(gpsReader, time.Now())
+
+					if err != nil {
+						log.Printf("Unable to set initial time for gps(pmtk): %v", err)
+					}
+				}
 			case "ubx":
 				err := ubx.Configure(gpsReader)
 				if err != nil {

@@ -190,14 +190,14 @@ func TestReadGPSStopsOnCancelWhileSending(t *testing.T) {
 	waitForReturn(t, done, "readGPS")
 }
 
-func runBarLoop(t *testing.T, fixes <-chan gps.Fix, unit string) (*atomic.Pointer[barImage], context.CancelFunc, <-chan struct{}) {
+func runBarLoop(t *testing.T, fixes <-chan gps.Fix, unit string, mic string) (*atomic.Pointer[barImage], context.CancelFunc, <-chan struct{}) {
 	t.Helper()
 	bar := startBar(t, "start")
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		barLoop(ctx, bar, testBarConfig(), unit, fixes)
+		barLoop(ctx, bar, testBarConfig(), unit, mic, fixes)
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -216,17 +216,20 @@ func TestBarLoopDrawsFixes(t *testing.T) {
 		name  string
 		fixes []gps.Fix
 		unit  string
+		mic   string
 		want  string
 	}{
 		{name: "valid fix in km/h", fixes: []gps.Fix{valid}, unit: "km/h", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅ "},
 		{name: "valid fix in mph", fixes: []gps.Fix{valid}, unit: "mph", want: " 26 mph  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅ "},
 		{name: "fix lost shows clock time", fixes: []gps.Fix{valid, {}}, unit: "km/h", want: "--- km/h  2026-11-16 12:35:00  No GPS fix"},
+		{name: "valid fix with mic on", fixes: []gps.Fix{valid}, unit: "km/h", mic: "MIC on", want: " 41 km/h  1994-03-23 12:35:19  N48.1173 E011.5167  ▁▃▅   MIC on"},
+		{name: "fix lost with mic off", fixes: []gps.Fix{valid, {}}, unit: "km/h", mic: "MIC off", want: "--- km/h  2026-11-16 12:35:00  No GPS fix                MIC off"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fixes := make(chan gps.Fix)
-			bar, _, _ := runBarLoop(t, fixes, tt.unit)
+			bar, _, _ := runBarLoop(t, fixes, tt.unit, tt.mic)
 			for _, fix := range tt.fixes {
 				fixes <- fix
 			}
@@ -250,7 +253,7 @@ func TestBarLoopTicksWithoutGPS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeBarClock(t, time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC), tt.synced)
-			bar, _, _ := runBarLoop(t, make(chan gps.Fix), "km/h")
+			bar, _, _ := runBarLoop(t, make(chan gps.Fix), "km/h", "")
 			waitForBarText(t, bar, tt.want, 2*time.Second)
 		})
 	}
@@ -290,7 +293,7 @@ func TestBarLoopFixAge(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			advance := movableBarClock(t, start)
 			fixes := make(chan gps.Fix)
-			bar, _, _ := runBarLoop(t, fixes, "km/h")
+			bar, _, _ := runBarLoop(t, fixes, "km/h", "")
 
 			fixes <- valid
 			waitForBarText(t, bar, validText, 500*time.Millisecond)
@@ -305,7 +308,7 @@ func TestBarLoopFixAge(t *testing.T) {
 }
 
 func TestBarLoopStopsOnCancel(t *testing.T) {
-	_, cancel, done := runBarLoop(t, make(chan gps.Fix), "km/h")
+	_, cancel, done := runBarLoop(t, make(chan gps.Fix), "km/h", "")
 	cancel()
 	select {
 	case <-done:

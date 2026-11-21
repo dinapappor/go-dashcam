@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	DashcamTitle    string      `json:"dashcam_title"`
-	OutputDirectory string      `json:"output_directory"`
-	SpeedUnit       string      `json:"speed_unit"`
-	VideoConfig     VideoConfig `json:"video_config"`
-	GPSConfig       *GPSConfig  `json:"gps_config"`
+	DashcamTitle    string       `json:"dashcam_title"`
+	OutputDirectory string       `json:"output_directory"`
+	SpeedUnit       string       `json:"speed_unit"`
+	VideoConfig     VideoConfig  `json:"video_config"`
+	AudioConfig     *AudioConfig `json:"audio_config"`
+	GPSConfig       *GPSConfig   `json:"gps_config"`
 }
 
 type VideoConfig struct {
@@ -28,6 +29,10 @@ type VideoConfig struct {
 	Encoder         string `json:"encoder"`        // For now we make this hardcoded in config.
 	EncoderDevice   string `json:"encoder_device"` // as above - should be auto-detected
 	Bitrate         int32  `json:"bitrate"`
+}
+
+type AudioConfig struct {
+	Device string `json:"device"`
 }
 
 type GPSConfig struct {
@@ -67,6 +72,14 @@ func ParseConfig(path string) (Config, error) {
 
 	if config.OutputDirectory == "" {
 		config.OutputDirectory = "videos"
+	}
+
+	if config.AudioConfig != nil {
+		config.AudioConfig.Device = strings.TrimSpace(config.AudioConfig.Device)
+		if config.AudioConfig.Device == "" {
+			return Config{}, fmt.Errorf("Audio Device must not be empty")
+		}
+
 	}
 
 	if config.GPSConfig != nil {

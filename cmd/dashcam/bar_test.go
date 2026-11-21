@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/dinapappor/go-dashcam/gps"
 )
@@ -160,7 +161,7 @@ func TestBarText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := barText(tt.fix, tt.unit, tt.now, tt.synced)
+			got := barText(tt.fix, tt.unit, tt.now, tt.synced, "")
 			if got != tt.want {
 				t.Errorf("barText() = %q, want %q", got, tt.want)
 			}
@@ -171,10 +172,10 @@ func TestBarText(t *testing.T) {
 func TestBarTextKeepsColumns(t *testing.T) {
 	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
 	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
-	withFix := barText(gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h", now, false)
+	withFix := barText(gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}, "km/h", now, false, "")
 
 	for _, synced := range []bool{false, true} {
-		noFix := barText(gps.Fix{}, "km/h", now, synced)
+		noFix := barText(gps.Fix{}, "km/h", now, synced, "")
 
 		timeColumn := len("141 km/h  ")
 		positionColumn := len("141 km/h  2026-11-14 00:30:05  ")
@@ -242,5 +243,102 @@ func TestSignalBars(t *testing.T) {
 				t.Errorf("signalBars() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestMicText(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured bool
+		present    bool
+		want       string
+	}{
+		{name: "not configured shows nothing", configured: false, present: false, want: ""},
+		{name: "not configured ignores present", configured: false, present: true, want: ""},
+		{name: "configured and present", configured: true, present: true, want: "MIC on"},
+		{name: "configured but missing", configured: true, present: false, want: "MIC off"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := micText(tt.configured, tt.present); got != tt.want {
+				t.Errorf("micText(%t, %t) = %q, want %q", tt.configured, tt.present, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBarTextWithMic(t *testing.T) {
+	oldLocal := time.Local
+	time.Local = time.FixedZone("TEST", 2*60*60)
+	t.Cleanup(func() { time.Local = oldLocal })
+
+	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
+	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
+	trusted := gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, Time: fixTime, Latitude: 59.3293, Longitude: 18.0686}}
+
+	tests := []struct {
+		name   string
+		fix    gps.Fix
+		unit   string
+		synced bool
+		mic    string
+		want   string
+	}{
+		{
+			name: "trusted fix, mic on",
+			fix:  trusted,
+			unit: "km/h",
+			mic:  "MIC on",
+			want: "  0 km/h  2026-11-14 00:30:05  N59.3293 E018.0686  ▁▃▅   MIC on",
+		},
+		{
+			name:   "synced no fix is padded, mic off",
+			unit:   "km/h",
+			synced: true,
+			mic:    "MIC off",
+			want:   "--- km/h  2026-11-16 14:35:00  No GPS fix                MIC off",
+		},
+		{
+			name: "unsynced no fix is padded, mic on",
+			unit: "km/h",
+			mic:  "MIC on",
+			want: "--- km/h  ---------- --:--:--  No GPS fix                MIC on",
+		},
+		{
+			name: "mph keeps the same layout",
+			unit: "mph",
+			mic:  "MIC on",
+			want: "--- mph  ---------- --:--:--  No GPS fix                MIC on",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := barText(tt.fix, tt.unit, now, tt.synced, tt.mic)
+			if got != tt.want {
+				t.Errorf("barText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBarTextMicEndsInSameColumn(t *testing.T) {
+	fixTime := time.Date(2026, 11, 13, 22, 30, 5, 0, time.UTC)
+	now := time.Date(2026, 11, 16, 12, 35, 0, 0, time.UTC)
+	trusted := gps.Fix{GGA: trustedGGA, RMC: gps.RMC{Valid: true, SpeedKts: 76.2, Time: fixTime, Latitude: -33.8688, Longitude: -151.2093}}
+
+	for _, mic := range []string{"MIC on", "MIC off"} {
+		lines := []string{
+			barText(trusted, "km/h", now, false, mic),
+			barText(gps.Fix{}, "km/h", now, true, mic),
+			barText(gps.Fix{}, "km/h", now, false, mic),
+		}
+		want := utf8.RuneCountInString(lines[0])
+		for _, line := range lines[1:] {
+			if got := utf8.RuneCountInString(line); got != want {
+				t.Errorf("%s: line has %d runes, want %d:\n%q\n%q", mic, got, want, lines[0], line)
+			}
+		}
 	}
 }

@@ -55,6 +55,15 @@ func main() {
 		return
 	}
 
+	var audioConfigured bool
+	var audioDevicePresent bool
+	if dashcamConfig.AudioConfig != nil {
+		audioConfigured = true
+		audioDevicePresent = true
+	}
+
+	micOutput := micText(audioConfigured, audioDevicePresent)
+
 	titleOverlayConfig := overlay.Config{
 		Text:        dashcamConfig.DashcamTitle,
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
@@ -68,7 +77,7 @@ func main() {
 	}
 
 	bottomBarOverlayConfig := overlay.Config{
-		Text:        barText(gps.Fix{}, dashcamConfig.SpeedUnit, time.Now(), clock.Synced(clock.TimesyncdMarker)),
+		Text:        barText(gps.Fix{}, dashcamConfig.SpeedUnit, time.Now(), clock.Synced(clock.TimesyncdMarker), micOutput),
 		FrameHeight: int(dashcamConfig.VideoConfig.Height),
 		Width:       int(dashcamConfig.VideoConfig.Width),
 	}
@@ -91,7 +100,7 @@ func main() {
 
 	fixes := make(chan gps.Fix)
 
-	go barLoop(ctx, &bottomBar, bottomBarOverlayConfig, dashcamConfig.SpeedUnit, fixes)
+	go barLoop(ctx, &bottomBar, bottomBarOverlayConfig, dashcamConfig.SpeedUnit, micOutput, fixes)
 
 	if dashcamConfig.GPSConfig != nil {
 		gpsReader, err := openGPS(*dashcamConfig.GPSConfig)

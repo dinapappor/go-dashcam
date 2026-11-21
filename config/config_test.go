@@ -399,3 +399,51 @@ func TestParseConfigGPSAiding(t *testing.T) {
 		})
 	}
 }
+
+func TestParseConfigAudioConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		field      string
+		wantNil    bool
+		wantDevice string
+		wantErr    bool
+	}{
+		{name: "missing block means no audio", wantNil: true},
+		{name: "null block means no audio", field: `,"audio_config":null`, wantNil: true},
+		{name: "hw device is kept", field: `,"audio_config":{"device":"hw:1"}`, wantDevice: "hw:1"},
+		{name: "default device is kept", field: `,"audio_config":{"device":"default"}`, wantDevice: "default"},
+		{name: "surrounding spaces are trimmed", field: `,"audio_config":{"device":" plughw:1,0 "}`, wantDevice: "plughw:1,0"},
+		{name: "empty device is rejected", field: `,"audio_config":{"device":""}`, wantErr: true},
+		{name: "only spaces device is rejected", field: `,"audio_config":{"device":"   "}`, wantErr: true},
+		{name: "missing device is rejected", field: `,"audio_config":{}`, wantErr: true},
+		{name: "non-string device is rejected", field: `,"audio_config":{"device":1}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30}` + tt.field + `}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected audio config error, got %+v", cfg.AudioConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if tt.wantNil {
+				if cfg.AudioConfig != nil {
+					t.Errorf("AudioConfig = %+v, want nil", cfg.AudioConfig)
+				}
+				return
+			}
+			if cfg.AudioConfig == nil {
+				t.Fatal("AudioConfig is nil")
+			}
+			if cfg.AudioConfig.Device != tt.wantDevice {
+				t.Errorf("AudioConfig.Device = %q, want %q", cfg.AudioConfig.Device, tt.wantDevice)
+			}
+		})
+	}
+}

@@ -106,7 +106,15 @@ func (w failingWriter) Write(p []byte) (int, error) {
 	return 0, w.err
 }
 
+func setPause(t *testing.T, d time.Duration) {
+	t.Helper()
+	old := badPause
+	badPause = d
+	t.Cleanup(func() { badPause = old })
+}
+
 func TestConfigureSendsCommandsInOrder(t *testing.T) {
+	setPause(t, 0)
 	var buf bytes.Buffer
 
 	if err := Configure(&buf); err != nil {
@@ -118,6 +126,34 @@ func TestConfigureSendsCommandsInOrder(t *testing.T) {
 		"$PMTK220,100*2F\r\n"
 	if got := buf.String(); got != want {
 		t.Errorf("Configure wrote %q, want %q", got, want)
+	}
+}
+
+type timedWriter struct {
+	times []time.Time
+}
+
+func (w *timedWriter) Write(p []byte) (int, error) {
+	w.times = append(w.times, time.Now())
+	return len(p), nil
+}
+
+func TestConfigurePausesAfterBaudChange(t *testing.T) {
+	pause := 30 * time.Millisecond
+	setPause(t, pause)
+	w := &timedWriter{}
+
+	if err := Configure(w); err != nil {
+		t.Fatalf("Configure: %v", err)
+	}
+	if len(w.times) != 3 {
+		t.Fatalf("Configure made %d writes, want 3", len(w.times))
+	}
+	if gap := w.times[1].Sub(w.times[0]); gap < pause {
+		t.Errorf("gap after PMTK251 = %v, want at least %v", gap, pause)
+	}
+	if gap := w.times[2].Sub(w.times[1]); gap >= pause {
+		t.Errorf("gap after PMTK314 = %v, want less than %v", gap, pause)
 	}
 }
 

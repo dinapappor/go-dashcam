@@ -8,6 +8,8 @@ import (
 	"github.com/dinapappor/go-dashcam/gps"
 )
 
+var badPause = 100 * time.Millisecond
+
 func formatSentence(body string) string {
 	checksum := gps.CalculateChecksum(body)
 
@@ -34,6 +36,8 @@ func Configure(w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("Unable to set baudrate: %w", err)
 	}
+
+	time.Sleep(badPause)
 
 	// RMC+GGA
 	err = Send(w, "PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")

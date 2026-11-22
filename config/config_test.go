@@ -447,3 +447,44 @@ func TestParseConfigAudioConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestParseConfigAudioOffset(t *testing.T) {
+	tests := []struct {
+		name       string
+		offset     string
+		wantOffset time.Duration
+		wantErr    bool
+	}{
+		{name: "missing offset is zero", offset: "", wantOffset: 0},
+		{name: "empty offset is zero", offset: `,"offset":""`, wantOffset: 0},
+		{name: "positive offset", offset: `,"offset":"100ms"`, wantOffset: 100 * time.Millisecond},
+		{name: "negative offset", offset: `,"offset":"-50ms"`, wantOffset: -50 * time.Millisecond},
+		{name: "zero offset", offset: `,"offset":"0"`, wantOffset: 0},
+		{name: "seconds offset", offset: `,"offset":"1.5s"`, wantOffset: 1500 * time.Millisecond},
+		{name: "word is rejected", offset: `,"offset":"fast"`, wantErr: true},
+		{name: "number without unit is rejected", offset: `,"offset":"100"`, wantErr: true},
+		{name: "non-string offset is rejected", offset: `,"offset":100`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30},"audio_config":{"device":"hw:1"` + tt.offset + `}}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected offset error, got %+v", cfg.AudioConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if cfg.AudioConfig == nil {
+				t.Fatal("AudioConfig is nil")
+			}
+			if cfg.AudioConfig.OffsetValue != tt.wantOffset {
+				t.Errorf("AudioConfig.OffsetValue = %v, want %v", cfg.AudioConfig.OffsetValue, tt.wantOffset)
+			}
+		})
+	}
+}

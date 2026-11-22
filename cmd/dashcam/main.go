@@ -69,7 +69,7 @@ func main() {
 	}
 
 	if audioConfigured && !audioDevicePresent {
-		log.Printf("Mix %q not found, recording video only", dashcamConfig.AudioConfig.Device)
+		log.Printf("Mic %q not found, recording video only", dashcamConfig.AudioConfig.Device)
 	}
 
 	micOutput := micText(audioConfigured, audioDevicePresent)
@@ -246,7 +246,7 @@ func main() {
 
 	if audioDevicePresent {
 		inputArgs = append(video.VideoSyncArgs(), inputArgs...)
-		audioIn, err := video.AudioInputArgs(dashcamConfig.AudioConfig.Device)
+		audioIn, err := video.AudioInputArgs(dashcamConfig.AudioConfig.Device, dashcamConfig.AudioConfig.OffsetValue)
 
 		if err != nil {
 			log.Printf("Could not build audio input args: %v", err)

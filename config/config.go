@@ -32,7 +32,9 @@ type VideoConfig struct {
 }
 
 type AudioConfig struct {
-	Device string `json:"device"`
+	Device      string        `json:"device"`
+	Offset      string        `json:"offset"`
+	OffsetValue time.Duration `json:"-"`
 }
 
 type GPSConfig struct {
@@ -78,6 +80,17 @@ func ParseConfig(path string) (Config, error) {
 		config.AudioConfig.Device = strings.TrimSpace(config.AudioConfig.Device)
 		if config.AudioConfig.Device == "" {
 			return Config{}, fmt.Errorf("Audio Device must not be empty")
+		}
+
+		if config.AudioConfig.Offset == "" {
+			config.AudioConfig.Offset = "0"
+		} else {
+			offsetValue, err := time.ParseDuration(config.AudioConfig.Offset)
+
+			if err != nil {
+				return Config{}, fmt.Errorf("Could not parse offset value %q: %w", config.AudioConfig.Offset, err)
+			}
+			config.AudioConfig.OffsetValue = offsetValue
 		}
 
 	}

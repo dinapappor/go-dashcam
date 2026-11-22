@@ -2,15 +2,24 @@ package video
 
 import (
 	"errors"
+	"strconv"
+	"time"
 )
 
-func AudioInputArgs(device string) ([]string, error) {
+func AudioInputArgs(device string, offsetValue time.Duration) ([]string, error) {
 
 	if device == "" {
 		return nil, errors.New("Jeesos karen, you must give me a device")
 	}
 
-	inputArgs := []string{"-itsoffset", "0.1", "-f", "alsa", "-i", device}
+	var inputArgs []string
+	if offsetValue == 0 {
+		inputArgs = []string{"-f", "alsa", "-i", device}
+	} else {
+		offset := strconv.FormatFloat(offsetValue.Seconds(), 'f', -1, 64)
+		inputArgs = []string{"-itsoffset", offset, "-f", "alsa", "-i", device}
+
+	}
 
 	return inputArgs, nil
 }

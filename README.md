@@ -15,6 +15,10 @@ Subject to change - for instance if we have multiple cameras in the future.
         "device": "/dev/ttyACM0",
         "protocol": "ubx"
     },
+    "audio_config": {
+        "device": "hw:C93",
+        "offset": "65ms"
+    },
     "video_config": {
         "video_source": "/dev/video4",
         "width": 1280,
@@ -90,6 +94,10 @@ For a Raspberry Pi 5 you'd likely use the below config seeing that it doesn't ha
 | `gps_config.device` | GPS device, e.g. `/dev/i2c-1` or `/dev/ttyACM0`. |
 | `gps_config.address` | I2C address such as `0x10`. Only used with `i2c`. |
 | `gps_config.protocol` | `""` (plain NMEA, no configuration), `pmtk` (MediaTek) or `ubx` (u-blox). |
+| `gps_config.aiding` | `true` (default) or `false`. With `pmtk` or `ubx`, sends the system time to the receiver at start when the clock is NTP synced, for a faster fix. |
+| `audio_config` | Optional. Leave it out to record without sound. |
+| `audio_config.device` | ALSA capture device, e.g. `hw:1` or `hw:C93` (card name, case sensitive). If it is missing at start, dashcam records video only and the bar shows `MIC off`. |
+| `audio_config.offset` | Go duration such as `65ms` that delays the audio. Positive when sound arrives before the picture; negative values allowed. Defaults to `0`. |
 
 ## Building it
 

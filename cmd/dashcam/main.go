@@ -245,15 +245,16 @@ func main() {
 	}
 
 	if audioDevicePresent {
-		inputArgs = append(video.VideoSyncArgs(), inputArgs...)
 		audioIn, err := video.AudioInputArgs(dashcamConfig.AudioConfig.Device, dashcamConfig.AudioConfig.OffsetValue)
 
 		if err != nil {
 			log.Printf("Could not build audio input args: %v", err)
 			return
 		}
-		fart := append(audioIn, video.AudioOutputArgs()...)
-		outputArgs = append(fart, outputArgs...)
+
+		inputArgs = append(video.VideoSyncArgs(), inputArgs...)
+		inputArgs = append(audioIn, inputArgs...)
+		outputArgs = append(video.AudioOutputArgs(), outputArgs...)
 	}
 
 	encoder, err := video.NewEncoder(inputArgs, outputArgs)

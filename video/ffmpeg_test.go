@@ -144,13 +144,15 @@ func TestEncoderWriteErrorAfterExit(t *testing.T) {
 }
 
 func TestEncoderWriteStalled(t *testing.T) {
-	installFakeFFmpeg(t, "exec sleep 60")
+	installFakeFFmpeg(t, "trap '' INT\nexec sleep 60")
 
 	encoder, err := NewEncoder(nil, nil)
 	if err != nil {
 		t.Fatalf("Unable to start fake ffmpeg: %v", err)
 	}
 	encoder.writeTimeout = 100 * time.Millisecond
+	encoder.interruptTimeout = 100 * time.Millisecond
+	encoder.killTimeout = 300 * time.Millisecond
 
 	err = encoder.WriteFrame(make([]byte, 1024*1024))
 	if !errors.Is(err, os.ErrDeadlineExceeded) {
@@ -167,5 +169,108 @@ func TestEncoderWriteStalled(t *testing.T) {
 	status, ok := exitErr.Sys().(syscall.WaitStatus)
 	if !ok || !status.Signaled() || status.Signal() != syscall.SIGKILL {
 		t.Errorf("Stalled ffmpeg should be killed with SIGKILL, got %v", err)
+	}
+}
+
+func TestNewEncoderShutdownDefaults(t *testing.T) {
+	installFakeFFmpeg(t, "cat > /dev/null")
+
+	encoder, err := NewEncoder(nil, nil)
+	if err != nil {
+		t.Fatalf("Unable to start fake ffmpeg: %v", err)
+	}
+	defer encoder.Close()
+
+	if encoder.interruptTimeout != 2*time.Second {
+		t.Errorf("interruptTimeout should default to 2s, got %v", encoder.interruptTimeout)
+	}
+
+	if encoder.killTimeout != 5*time.Second {
+		t.Errorf("killTimeout should default to 5s, got %v", encoder.killTimeout)
+	}
+}
+
+func TestEncoderCloseShutdown(t *testing.T) {
+	tests := []struct {
+		name         string
+		script       string
+		wantErr      bool
+		wantExitCode int
+		wantSignal   syscall.Signal
+	}{
+		{
+			name:    "exits on closed pipe before interrupt",
+			script:  "cat > /dev/null\nexit 0",
+			wantErr: false,
+		},
+		{
+			name:    "ignores closed pipe, exits 255 on interrupt",
+			script:  "trap 'exit 255' INT\ncat > /dev/null\nwhile true; do sleep 0.05; done",
+			wantErr: false,
+		},
+		{
+			name:         "ignores closed pipe, exits 1 on interrupt",
+			script:       "trap 'exit 1' INT\ncat > /dev/null\nwhile true; do sleep 0.05; done",
+			wantErr:      true,
+			wantExitCode: 1,
+		},
+		{
+			name:         "exits 255 on its own without interrupt",
+			script:       "cat > /dev/null\nexit 255",
+			wantErr:      true,
+			wantExitCode: 255,
+		},
+		{
+			name:       "ignores interrupt, gets killed",
+			script:     "trap '' INT\ncat > /dev/null\nexec sleep 60",
+			wantErr:    true,
+			wantSignal: syscall.SIGKILL,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			installFakeFFmpeg(t, tt.script)
+
+			encoder, err := NewEncoder(nil, nil)
+			if err != nil {
+				t.Fatalf("Unable to start fake ffmpeg: %v", err)
+			}
+			encoder.interruptTimeout = 100 * time.Millisecond
+			encoder.killTimeout = 1 * time.Second
+
+			start := time.Now()
+			err = encoder.Close()
+			elapsed := time.Since(start)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Close error = %v, wantErr %t", err, tt.wantErr)
+			}
+
+			if tt.wantSignal == 0 && elapsed >= encoder.killTimeout {
+				t.Errorf("Close took %v, should finish before killTimeout %v", elapsed, encoder.killTimeout)
+			}
+
+			if !tt.wantErr {
+				return
+			}
+
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) {
+				t.Fatalf("Close should return an exec.ExitError, got %v", err)
+			}
+
+			if tt.wantSignal != 0 {
+				status, ok := exitErr.Sys().(syscall.WaitStatus)
+				if !ok || !status.Signaled() || status.Signal() != tt.wantSignal {
+					t.Errorf("ffmpeg should be stopped by %v, got %v", tt.wantSignal, err)
+				}
+				return
+			}
+
+			if exitErr.ExitCode() != tt.wantExitCode {
+				t.Errorf("Exit code should be %d, got %d", tt.wantExitCode, exitErr.ExitCode())
+			}
+		})
 	}
 }

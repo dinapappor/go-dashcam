@@ -10,7 +10,7 @@ func AudioInputArgs(device string) ([]string, error) {
 		return nil, errors.New("Jeesos karen, you must give me a device")
 	}
 
-	inputArgs := []string{"-thread_queue_size", "512", "-f", "alsa", "-i", device}
+	inputArgs := []string{"-itsoffset", "0.1", "-f", "alsa", "-i", device}
 
 	return inputArgs, nil
 }

@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dinapappor/go-dashcam/audio"
 	"github.com/dinapappor/go-dashcam/clock"
 	"github.com/dinapappor/go-dashcam/config"
 	"github.com/dinapappor/go-dashcam/gps"
@@ -57,9 +58,18 @@ func main() {
 
 	var audioConfigured bool
 	var audioDevicePresent bool
+
 	if dashcamConfig.AudioConfig != nil {
 		audioConfigured = true
-		audioDevicePresent = true
+		audioDevicePresent = audio.Present(
+			dashcamConfig.AudioConfig.Device,
+			"/proc/asound",
+			"/dev/snd",
+		)
+	}
+
+	if audioConfigured && !audioDevicePresent {
+		log.Printf("Mix %q not found, recording video only", dashcamConfig.AudioConfig.Device)
 	}
 
 	micOutput := micText(audioConfigured, audioDevicePresent)
@@ -234,6 +244,18 @@ func main() {
 		outputArgs = append([]string{"-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p"}, outputArgs...)
 	}
 
+	if audioDevicePresent {
+		inputArgs = append(video.VideoSyncArgs(), inputArgs...)
+		audioIn, err := video.AudioInputArgs(dashcamConfig.AudioConfig.Device)
+
+		if err != nil {
+			log.Printf("Could not build audio input args: %v", err)
+			return
+		}
+		fart := append(audioIn, video.AudioOutputArgs()...)
+		outputArgs = append(fart, outputArgs...)
+	}
+
 	encoder, err := video.NewEncoder(inputArgs, outputArgs)
 
 	if err != nil {
@@ -254,6 +276,7 @@ func main() {
 
 	defer func() {
 		stop()
+		signal.Ignore(os.Interrupt)
 		if err := <-monitorResult; err != nil {
 			log.Printf("Recording monitor failed: %v", err)
 		}

@@ -6,14 +6,17 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
 
 type Encoder struct {
-	pipe         *os.File
-	cmd          *exec.Cmd
-	writeTimeout time.Duration
+	pipe             *os.File
+	cmd              *exec.Cmd
+	writeTimeout     time.Duration
+	interruptTimeout time.Duration
+	killTimeout      time.Duration
 }
 
 func NewEncoder(inputArgs []string, outputArgs []string) (*Encoder, error) {
@@ -21,6 +24,8 @@ func NewEncoder(inputArgs []string, outputArgs []string) (*Encoder, error) {
 
 	// Set encoder timeout by default
 	encoder.writeTimeout = 10 * time.Second
+	encoder.interruptTimeout = 2 * time.Second
+	encoder.killTimeout = 5 * time.Second
 	ffmpeg, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return nil, fmt.Errorf("Could not lookup ffmpeg path: %w", err)
@@ -87,9 +92,18 @@ func (e *Encoder) Close() error {
 		closeErr = errors.Join(closeErr, err)
 	}
 
+	var interrupted atomic.Bool
+
+	sigIntTimer := time.AfterFunc(e.interruptTimeout, func() {
+		interrupted.Store(true)
+		_ = e.cmd.Process.Signal(os.Interrupt)
+	})
+
+	defer sigIntTimer.Stop()
+
 	// Forcefully kill ffmpeg if e.cmd.Wait() doesn't
 	// return in time
-	timer := time.AfterFunc(5*time.Second, func() {
+	timer := time.AfterFunc(e.killTimeout, func() {
 		_ = e.cmd.Process.Kill()
 	})
 
@@ -97,7 +111,10 @@ func (e *Encoder) Close() error {
 	defer timer.Stop()
 
 	if waitErr := e.cmd.Wait(); waitErr != nil {
-		closeErr = errors.Join(closeErr, waitErr)
+		var exitErr *exec.ExitError
+		if !(interrupted.Load() && errors.As(waitErr, &exitErr) && exitErr.ExitCode() == 255) {
+			closeErr = errors.Join(closeErr, waitErr)
+		}
 	}
 
 	return closeErr

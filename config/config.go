@@ -2,7 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -16,6 +18,7 @@ type Config struct {
 	VideoConfig     VideoConfig  `json:"video_config"`
 	AudioConfig     *AudioConfig `json:"audio_config"`
 	GPSConfig       *GPSConfig   `json:"gps_config"`
+	WebConfig       *WebConfig   `json:"web_config"`
 }
 
 type VideoConfig struct {
@@ -44,6 +47,11 @@ type GPSConfig struct {
 	AddressValue int    `json:"-"`        // a bit of cheating here
 	Protocol     string `json:"protocol"` // ie, PMTK, ubx etc
 	Aiding       *bool  `json:"aiding"`   // Ie, set time and/or last known location to speed up fix
+}
+
+type WebConfig struct {
+	Listen   string `json:"listen"`
+	Password string `json:"password"`
 }
 
 func ParseConfig(path string) (Config, error) {
@@ -193,6 +201,38 @@ func ParseConfig(path string) (Config, error) {
 				config.VideoConfig.Bitrate = 5_000_000
 			}
 		}
+	}
+
+	if config.WebConfig != nil {
+		config.WebConfig.Listen = strings.TrimSpace(config.WebConfig.Listen)
+		if config.WebConfig.Listen == "" {
+			config.WebConfig.Listen = ":8080"
+		}
+
+		_, port, err := net.SplitHostPort(config.WebConfig.Listen)
+
+		if err != nil {
+			return Config{}, fmt.Errorf("Unable to parse listen: %w", err)
+		}
+
+		p, err := strconv.ParseUint(port, 10, 16)
+		if err != nil {
+			return Config{}, fmt.Errorf("Unable to parse port: %w", err)
+		}
+		if p == 0 {
+			return Config{}, errors.New("Got port zero")
+		}
+
+		if config.WebConfig.Password == "" {
+			return Config{}, errors.New("You must set a password")
+		}
+
+		testOnlySpaces := strings.TrimSpace(config.WebConfig.Password)
+
+		if testOnlySpaces == "" {
+			return Config{}, errors.New("A password cant contain only spaces")
+		}
+
 	}
 
 	return config, nil

@@ -145,8 +145,8 @@ These tests require no camera. Recording and stalled-FFmpeg shutdown have been c
 - **v0.1:** Title overlay drawn in Go, configurable recording segments or continuous recording, and oldest-file cleanup.
 - **v0.2:** GPS input and location/speed overlay.
 - **v0.3:** Optional microphone audio synchronized with video.
-- **v0.4:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
-- **v0.5 (tentative):** Web UI and/or API for configuring settings.
+- **v0.4:** Web UI for listing, playing, downloading and deleting recordings, and for settings.
+- **v0.5:** YouTube and other FFmpeg-compatible streaming destinations, including reconnection. Supply silent audio for YouTube when no microphone is available.
 
 ## Targets
 

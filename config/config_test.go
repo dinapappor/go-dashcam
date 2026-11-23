@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -484,6 +485,89 @@ func TestParseConfigAudioOffset(t *testing.T) {
 			}
 			if cfg.AudioConfig.OffsetValue != tt.wantOffset {
 				t.Errorf("AudioConfig.OffsetValue = %v, want %v", cfg.AudioConfig.OffsetValue, tt.wantOffset)
+			}
+		})
+	}
+}
+
+func TestParseConfigWeb(t *testing.T) {
+	tests := []struct {
+		name         string
+		field        string
+		wantNil      bool
+		wantListen   string
+		wantPassword string
+		wantErr      bool
+	}{
+		{name: "missing block means no web UI", wantNil: true},
+		{name: "null block means no web UI", field: `,"web_config":null`, wantNil: true},
+		{name: "listen and password are kept", field: `,"web_config":{"listen":":9000","password":"hunter2"}`, wantListen: ":9000", wantPassword: "hunter2"},
+		{name: "missing listen defaults to 8080", field: `,"web_config":{"password":"hunter2"}`, wantListen: ":8080", wantPassword: "hunter2"},
+		{name: "empty listen defaults to 8080", field: `,"web_config":{"listen":"","password":"hunter2"}`, wantListen: ":8080", wantPassword: "hunter2"},
+		{name: "only spaces listen defaults to 8080", field: `,"web_config":{"listen":"   ","password":"hunter2"}`, wantListen: ":8080", wantPassword: "hunter2"},
+		{name: "listen spaces are trimmed", field: `,"web_config":{"listen":" :9000 ","password":"hunter2"}`, wantListen: ":9000", wantPassword: "hunter2"},
+		{name: "ip and port", field: `,"web_config":{"listen":"192.168.1.10:8080","password":"hunter2"}`, wantListen: "192.168.1.10:8080", wantPassword: "hunter2"},
+		{name: "host name and port", field: `,"web_config":{"listen":"localhost:8080","password":"hunter2"}`, wantListen: "localhost:8080", wantPassword: "hunter2"},
+		{name: "highest port", field: `,"web_config":{"listen":":65535","password":"hunter2"}`, wantListen: ":65535", wantPassword: "hunter2"},
+		{name: "lowest port", field: `,"web_config":{"listen":":1","password":"hunter2"}`, wantListen: ":1", wantPassword: "hunter2"},
+		{name: "password spaces are kept", field: `,"web_config":{"password":" pass word "}`, wantListen: ":8080", wantPassword: " pass word "},
+		{name: "port without colon is rejected", field: `,"web_config":{"listen":"8080","password":"hunter2"}`, wantErr: true},
+		{name: "missing port is rejected", field: `,"web_config":{"listen":"localhost:","password":"hunter2"}`, wantErr: true},
+		{name: "port zero is rejected", field: `,"web_config":{"listen":":0","password":"hunter2"}`, wantErr: true},
+		{name: "port too high is rejected", field: `,"web_config":{"listen":":65536","password":"hunter2"}`, wantErr: true},
+		{name: "negative port is rejected", field: `,"web_config":{"listen":":-1","password":"hunter2"}`, wantErr: true},
+		{name: "named port is rejected", field: `,"web_config":{"listen":":http","password":"hunter2"}`, wantErr: true},
+		{name: "missing password is rejected", field: `,"web_config":{"listen":":8080"}`, wantErr: true},
+		{name: "empty password is rejected", field: `,"web_config":{"password":""}`, wantErr: true},
+		{name: "only spaces password is rejected", field: `,"web_config":{"password":"   "}`, wantErr: true},
+		{name: "non-string password is rejected", field: `,"web_config":{"password":1234}`, wantErr: true},
+		{name: "non-string listen is rejected", field: `,"web_config":{"listen":8080,"password":"hunter2"}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30}` + tt.field + `}`
+			cfg, err := ParseConfig(writeConfigFile(t, contents))
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected web config error, got %+v", cfg.WebConfig)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parse config: %v", err)
+			}
+			if tt.wantNil {
+				if cfg.WebConfig != nil {
+					t.Errorf("WebConfig = %+v, want nil", cfg.WebConfig)
+				}
+				return
+			}
+			if cfg.WebConfig == nil {
+				t.Fatal("WebConfig is nil")
+			}
+			if cfg.WebConfig.Listen != tt.wantListen {
+				t.Errorf("WebConfig.Listen = %q, want %q", cfg.WebConfig.Listen, tt.wantListen)
+			}
+			if cfg.WebConfig.Password != tt.wantPassword {
+				t.Errorf("WebConfig.Password = %q, want %q", cfg.WebConfig.Password, tt.wantPassword)
+			}
+		})
+	}
+}
+
+func TestParseConfigWebErrorHidesPassword(t *testing.T) {
+	listens := []string{"8080", ":0", ":65536", ":http"}
+
+	for _, listen := range listens {
+		t.Run(listen, func(t *testing.T) {
+			contents := `{"video_config":{"width":1280,"height":720,"fps":30},"web_config":{"listen":"` + listen + `","password":"hunter2"}}`
+			_, err := ParseConfig(writeConfigFile(t, contents))
+			if err == nil {
+				t.Fatal("expected web config error")
+			}
+			if strings.Contains(err.Error(), "hunter2") {
+				t.Errorf("error %q contains the password", err)
 			}
 		})
 	}

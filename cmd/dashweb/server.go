@@ -5,6 +5,7 @@ import (
 	"embed"
 	"errors"
 	"flag"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -12,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/config"
@@ -29,11 +32,68 @@ var pages = template.Must(
 		ParseFS(templateFiles, "templates/*.html"),
 )
 
+func recordingStatus(dir, name string) int {
+	if !strings.HasPrefix(name, "dashcam_") || !strings.HasSuffix(name, ".mp4") {
+		return http.StatusNotFound
+	}
+	if strings.Contains(name, "/") {
+		return http.StatusNotFound
+	}
+	recordings, err := listRecordingInfo(dir)
+
+	if err != nil {
+		return http.StatusNotFound
+	}
+
+	for _, recording := range recordings {
+		if recording.Name == name {
+			if recording.Active {
+				return http.StatusConflict
+			} else {
+				return http.StatusOK
+			}
+		}
+	}
+
+	return http.StatusNotFound
+}
+
 func newHandler(cfg config.Config) http.Handler {
 
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /static/", http.FileServerFS(staticFiles))
+
+	mux.HandleFunc("GET /play/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		status := recordingStatus(cfg.OutputDirectory, name)
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+		err := pages.ExecuteTemplate(w, "play.html", name)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("Unable to execute template: %v", err)
+			return
+		}
+	})
+
+	mux.HandleFunc("GET /video/{name}", func(w http.ResponseWriter, r *http.Request) {
+
+		name := r.PathValue("name")
+
+		status := recordingStatus(cfg.OutputDirectory, name)
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+		w.Header().Set("Content-Type", "video/mp4")
+		if r.URL.Query().Get("download") == "1" {
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", name))
+		}
+		http.ServeFile(w, r, filepath.Join(cfg.OutputDirectory, name))
+	})
 
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		err := pages.ExecuteTemplate(w, "index.html", nil)

@@ -1,6 +1,6 @@
 <ul>
 {{range .}}
-<li> {{.Name}} {{ formatSize .Size }} {{.Time.Format "2006-01-02 15:04:05"}} {{ if .Active }} Recording now {{ end }}
+<li> {{.Name}} {{ formatSize .Size }} {{.Time.Format "2006-01-02 15:04:05"}} {{ if .Active }} Recording now {{else}} <a href="/play/{{.Name}}">play</a> <a href="/video/{{.Name}}?download=1">download</a> {{ end }}
 {{else}}
 No recordings
 {{end}}

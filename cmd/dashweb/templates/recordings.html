@@ -1,0 +1,7 @@
+<ul>
+{{range .}}
+<li> {{.Name}} {{ formatSize .Size }} {{.Time.Format "2006-01-02 15:04:05"}} {{ if .Active }} Recording now {{ end }}
+{{else}}
+No recordings
+{{end}}
+</ul>

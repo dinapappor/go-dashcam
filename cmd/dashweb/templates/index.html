@@ -1,0 +1,9 @@
+<html>
+    <head>
+        <script src="/static/htmx.min.js"></script>
+        <title> Dashcam web interface</title>
+    </head>
+    <body>
+        <div hx-get="/recordings" hx-trigger="load, every 10s"> </div>
+    </body>
+</html>

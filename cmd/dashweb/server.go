@@ -32,6 +32,22 @@ var pages = template.Must(
 		ParseFS(templateFiles, "templates/*.html"),
 )
 
+func writeRecordings(w http.ResponseWriter, dir string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	recordings, err := listRecordingInfo(dir)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		io.WriteString(w, "No recordings")
+		return
+	}
+
+	err = pages.ExecuteTemplate(w, "recordings.html", recordings)
+	if err != nil {
+		log.Printf("Could not render the recordings: %v", err)
+	}
+}
+
 func recordingStatus(dir, name string) int {
 	if !strings.HasPrefix(name, "dashcam_") || !strings.HasSuffix(name, ".mp4") {
 		return http.StatusNotFound
@@ -63,6 +79,23 @@ func newHandler(cfg config.Config) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /static/", http.FileServerFS(staticFiles))
+
+	mux.HandleFunc("DELETE /video/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		status := recordingStatus(cfg.OutputDirectory, name)
+		if status != http.StatusOK {
+			w.WriteHeader(status)
+			return
+		}
+
+		err := os.Remove(filepath.Join(cfg.OutputDirectory, name))
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		writeRecordings(w, cfg.OutputDirectory)
+	})
 
 	mux.HandleFunc("GET /play/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
@@ -105,25 +138,7 @@ func newHandler(cfg config.Config) http.Handler {
 	})
 
 	mux.HandleFunc("GET /recordings", func(w http.ResponseWriter, r *http.Request) {
-		recordings, err := listRecordingInfo(cfg.OutputDirectory)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, "No recordings")
-			return
-		}
-
-		if len(recordings) == 0 {
-			io.WriteString(w, "No recordings")
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		err = pages.ExecuteTemplate(w, "recordings.html", recordings)
-
-		if err != nil {
-			log.Printf("Could not render the recordings: %v", err)
-			return
-		}
-
+		writeRecordings(w, cfg.OutputDirectory)
 	})
 	return mux
 

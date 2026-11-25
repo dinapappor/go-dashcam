@@ -1,10 +1,21 @@
-<ul>
+<div class="container-xl my-3">
+<ul class="list-group">
 {{range .}}
-<li> {{.Name}} {{ formatSize .Size }} {{.Time.Format "2006-01-02 15:04:05"}} {{ if .Active }} Recording now {{else}}
-    <a href="/play/{{.Name}}">play</a> <a href="/video/{{.Name}}?download=1">download</a>
-    <button hx-delete="/video/{{.Name}}" hx-confirm="Delete {{.Name}}?" hx-target="#recordings">Delete</button>
-    {{ end }}
+<li class="list-group-item d-flex align-items-center gap-2">
+    <div class="flex-fill">
+        <div>{{.Name}}</div>
+        <small class="text-secondary">{{formatSize .Size}} {{.Time.Format "2006-01-02 15:04:05"}}</small>
+    </div>
+    {{if .Active}}
+    <span class="badge bg-red text-white">Recording now</span>
+    {{else}}
+    <a class="btn btn-primary btn-sm" href="/play/{{.Name}}">Play</a>
+    <a class="btn btn-sm" href="/video/{{.Name}}?download=1">Download</a>
+    <button class="btn btn-danger btn-sm" hx-delete="/video/{{.Name}}" hx-confirm="Delete {{.Name}}?" hx-target="#recordings">Delete</button>
+    {{end}}
+</li>
 {{else}}
-No recordings
+<li class="list-group-item">No recordings</li>
 {{end}}
 </ul>
+</div>

@@ -115,6 +115,55 @@ func TestLoginPage(t *testing.T) {
 	}
 }
 
+func TestLoginPageHasNoNavbar(t *testing.T) {
+	for _, setup := range []struct {
+		name string
+		send func(handler http.Handler) *httptest.ResponseRecorder
+		want int
+	}{
+		{
+			name: "login page",
+			send: func(handler http.Handler) *httptest.ResponseRecorder {
+				return send(t, handler, http.MethodGet, "/login", nil, nil)
+			},
+			want: http.StatusOK,
+		},
+		{
+			name: "wrong password",
+			send: func(handler http.Handler) *httptest.ResponseRecorder {
+				return postLogin(t, handler, url.Values{"password": {"wrong"}})
+			},
+			want: http.StatusUnauthorized,
+		},
+	} {
+		t.Run(setup.name, func(t *testing.T) {
+			recorder := setup.send(newHandler(testConfig(t.TempDir())))
+			if recorder.Code != setup.want {
+				t.Fatalf("status = %d, want %d", recorder.Code, setup.want)
+			}
+			body := recorder.Body.String()
+			for _, want := range []string{
+				`<meta name="viewport" content="width=device-width, initial-scale=1">`,
+				`<link rel="stylesheet" href="/static/tabler.min.css">`,
+				`<title>`,
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("login page does not contain %q:\n%s", want, body)
+				}
+			}
+			if strings.Contains(body, "<nav") {
+				t.Errorf("login page has a <nav>:\n%s", body)
+			}
+			if _, found := tagWith(body, "<form", `action="/logout"`); found {
+				t.Errorf("login page has a logout form:\n%s", body)
+			}
+			if strings.Contains(body, "Log out") {
+				t.Errorf("login page has Log out text:\n%s", body)
+			}
+		})
+	}
+}
+
 func TestLoginCorrectPassword(t *testing.T) {
 	recorder := postLogin(t, newHandler(testConfig(t.TempDir())), url.Values{"password": {testPassword}})
 

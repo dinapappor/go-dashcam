@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/dinapappor/go-dashcam/config"
 )
 
 const (
@@ -32,13 +30,14 @@ func playHandler(t *testing.T) http.Handler {
 	writeRecording(t, dir, "notes.txt", 16)
 	writeRecording(t, dir, "dashcam_20261123-080000.mkv", 16)
 	writeRecording(t, parent, "dashcam_20261123-070000.mp4", 16)
-	return newHandler(config.Config{OutputDirectory: dir})
+	return newHandler(testConfig(dir))
 }
 
 func getWithRange(t *testing.T, handler http.Handler, path, byteRange string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, path, nil)
 	request.Header.Set("Range", byteRange)
+	request.AddCookie(login(t, handler))
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, request)
 	return recorder

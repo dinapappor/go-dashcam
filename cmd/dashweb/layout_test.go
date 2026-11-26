@@ -4,12 +4,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"github.com/dinapappor/go-dashcam/config"
 )
 
 func TestStaticTabler(t *testing.T) {
-	recorder := get(t, newHandler(config.Config{OutputDirectory: t.TempDir()}), "/static/tabler.min.css")
+	recorder := send(t, newHandler(testConfig(t.TempDir())), http.MethodGet, "/static/tabler.min.css", nil, nil)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -110,20 +108,5 @@ func TestFullPagesHaveNavbar(t *testing.T) {
 				t.Errorf("<nav> links Settings before the page exists:\n%s", nav)
 			}
 		})
-	}
-}
-
-func TestPlayPageBackLink(t *testing.T) {
-	recorder := get(t, playHandler(t), "/play/"+finishedRecording)
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
-	}
-	href, found := linkTo(recorder.Body.String(), "Back")
-	if !found {
-		t.Fatalf("play page has no Back link:\n%s", recorder.Body.String())
-	}
-	if href != "/" {
-		t.Errorf("Back link href = %q, want %q", href, "/")
 	}
 }

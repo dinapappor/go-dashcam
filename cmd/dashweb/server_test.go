@@ -5,12 +5,9 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dinapappor/go-dashcam/config"
 )
 
 func TestHandlerRoutes(t *testing.T) {
@@ -28,12 +25,11 @@ func TestHandlerRoutes(t *testing.T) {
 		{name: "delete on front page", method: http.MethodDelete, path: "/", wantStatus: http.StatusMethodNotAllowed},
 	}
 
-	handler := newHandler(config.Config{DashcamTitle: "Test Dashcam"})
+	handler := newHandler(testConfig(t.TempDir()))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			recorder := httptest.NewRecorder()
-			handler.ServeHTTP(recorder, httptest.NewRequest(tt.method, tt.path, nil))
+			recorder := send(t, handler, tt.method, tt.path, login(t, handler), nil)
 
 			if recorder.Code != tt.wantStatus {
 				t.Fatalf("status = %d, want %d", recorder.Code, tt.wantStatus)
@@ -64,13 +60,13 @@ func TestServeAnswersAndStopsOnCancel(t *testing.T) {
 
 	result := make(chan error, 1)
 	go func() {
-		result <- serve(ctx, listener, newHandler(config.Config{}))
+		result <- serve(ctx, listener, newHandler(testConfig(t.TempDir())))
 	}()
 
 	client := &http.Client{Timeout: 2 * time.Second}
-	response, err := client.Get(address + "/")
+	response, err := client.Get(address + "/login")
 	if err != nil {
-		t.Fatalf("GET /: %v", err)
+		t.Fatalf("GET /login: %v", err)
 	}
 	response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -88,7 +84,7 @@ func TestServeAnswersAndStopsOnCancel(t *testing.T) {
 		t.Fatal("serve did not return after cancel")
 	}
 
-	if _, err := client.Get(address + "/"); err == nil {
+	if _, err := client.Get(address + "/login"); err == nil {
 		t.Error("server still answers after serve returned")
 	}
 }
@@ -104,7 +100,7 @@ func TestServeAlreadyCancelled(t *testing.T) {
 
 	result := make(chan error, 1)
 	go func() {
-		result <- serve(ctx, listener, newHandler(config.Config{}))
+		result <- serve(ctx, listener, newHandler(testConfig(t.TempDir())))
 	}()
 
 	select {
@@ -129,7 +125,7 @@ func TestServeClosedListener(t *testing.T) {
 
 	result := make(chan error, 1)
 	go func() {
-		result <- serve(ctx, listener, newHandler(config.Config{}))
+		result <- serve(ctx, listener, newHandler(testConfig(t.TempDir())))
 	}()
 
 	select {

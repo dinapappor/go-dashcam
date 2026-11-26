@@ -1,20 +1,3 @@
-<!doctype html>
-<html>
-    <head>
-         <meta name="viewport" content="width=device-width, initial-scale=1">
-         <link rel="stylesheet" href="/static/tabler.min.css">
-        <script src="/static/htmx.min.js"></script>
-        <title> Dashcam web interface</title>
-    </head>
-    <body>
-        <nav class="navbar navbar-expand sticky-top shadow bg-white">
-            <div class="container-xl">
-                <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link" href="/">Recordings</a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-        <div id="recordings" hx-get="/recordings" hx-trigger="load, every 10s"> </div>
-    </body>
-</html>
+{{template "header" .}}
+        <div id="recordings" hx-get="/recordings" hx-trigger="load, every 10s"></div>
+{{template "footer" .}}

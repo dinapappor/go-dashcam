@@ -8,8 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/dinapappor/go-dashcam/config"
 )
 
 const otherFinishedRecording = "dashcam_20261123-083000.mp4"
@@ -34,7 +32,7 @@ func newDeleteSetup(t *testing.T) deleteSetup {
 	writeRecording(t, dir, "dashcam_20261123-080000.mkv", 16)
 	writeRecording(t, parent, "dashcam_20261123-070000.mp4", 16)
 	return deleteSetup{
-		handler: newHandler(config.Config{OutputDirectory: dir}),
+		handler: newHandler(testConfig(dir)),
 		dir:     dir,
 		parent:  parent,
 	}
@@ -42,9 +40,7 @@ func newDeleteSetup(t *testing.T) deleteSetup {
 
 func deleteRequest(t *testing.T, handler http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodDelete, path, nil))
-	return recorder
+	return send(t, handler, http.MethodDelete, path, login(t, handler), nil)
 }
 
 func assertExists(t *testing.T, path string) {

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/dinapappor/go-dashcam/config"
 )
 
 func setLocal(t *testing.T, zone *time.Location) {
@@ -28,9 +26,7 @@ func writeRecording(t *testing.T, dir, name string, size int) {
 
 func get(t *testing.T, handler http.Handler, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
-	return recorder
+	return send(t, handler, http.MethodGet, path, login(t, handler), nil)
 }
 
 func TestFormatSize(t *testing.T) {
@@ -150,7 +146,7 @@ func TestRecordingsPage(t *testing.T) {
 	writeRecording(t, dir, "dashcam_20261123-090000.mp4", 1536)
 	writeRecording(t, dir, "dashcam_20261123-100000.mp4", 2048)
 
-	recorder := get(t, newHandler(config.Config{OutputDirectory: dir}), "/recordings")
+	recorder := get(t, newHandler(testConfig(dir)), "/recordings")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -188,7 +184,7 @@ func TestRecordingsPage(t *testing.T) {
 }
 
 func TestRecordingsPageEmpty(t *testing.T) {
-	recorder := get(t, newHandler(config.Config{OutputDirectory: t.TempDir()}), "/recordings")
+	recorder := get(t, newHandler(testConfig(t.TempDir())), "/recordings")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -199,7 +195,7 @@ func TestRecordingsPageEmpty(t *testing.T) {
 }
 
 func TestRecordingsPageMissingDirectory(t *testing.T) {
-	recorder := get(t, newHandler(config.Config{OutputDirectory: filepath.Join(t.TempDir(), "missing")}), "/recordings")
+	recorder := get(t, newHandler(testConfig(filepath.Join(t.TempDir(), "missing"))), "/recordings")
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
@@ -207,7 +203,7 @@ func TestRecordingsPageMissingDirectory(t *testing.T) {
 }
 
 func TestFrontPageLoadsRecordings(t *testing.T) {
-	recorder := get(t, newHandler(config.Config{OutputDirectory: t.TempDir()}), "/")
+	recorder := get(t, newHandler(testConfig(t.TempDir())), "/")
 
 	body := recorder.Body.String()
 	for _, want := range []string{
@@ -222,7 +218,7 @@ func TestFrontPageLoadsRecordings(t *testing.T) {
 }
 
 func TestStaticHTMX(t *testing.T) {
-	recorder := get(t, newHandler(config.Config{}), "/static/htmx.min.js")
+	recorder := send(t, newHandler(testConfig(t.TempDir())), http.MethodGet, "/static/htmx.min.js", nil, nil)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)

@@ -1,0 +1,11 @@
+{{template "header" .}}
+    <div class="container-xl my-3">
+        <div class="container-tight py-4">
+            <form method="post" action="/login">
+                <input type="password" name="password">
+                <button type="submit" class="btn btn-primary">Log in</button>
+                <p>{{.}}</p>
+            </form>
+        </div>
+    </div>
+{{template "footer" .}}

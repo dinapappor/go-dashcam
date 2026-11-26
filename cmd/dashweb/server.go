@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
 	"embed"
 	"errors"
 	"flag"
@@ -15,6 +17,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dinapappor/go-dashcam/config"
@@ -76,9 +79,90 @@ func recordingStatus(dir, name string) int {
 
 func newHandler(cfg config.Config) http.Handler {
 
+	var sessionMutex sync.Mutex
+	sessions := map[string]bool{}
+
 	mux := http.NewServeMux()
 
 	mux.Handle("GET /static/", http.FileServerFS(staticFiles))
+
+	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+		err := pages.ExecuteTemplate(w, "login.html", nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("Unable to execute template: %v", err)
+			return
+		}
+	})
+
+	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
+		if cfg.WebConfig == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Printf("Password unconfigured")
+			return
+		}
+
+		if len(cfg.WebConfig.Password) == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+
+			err := pages.ExecuteTemplate(w, "login.html", "Wrong password")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Printf("Unable to execute template: %v", err)
+			}
+			return
+
+		}
+		configuredPassword := []byte(cfg.WebConfig.Password)
+
+		enteredPassword := []byte(r.FormValue("password"))
+
+		if subtle.ConstantTimeCompare(configuredPassword, enteredPassword) != 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			err := pages.ExecuteTemplate(w, "login.html", "Wrong password")
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				log.Printf("Unable to execute template: %v", err)
+			}
+			return
+		}
+
+		sessionToken := rand.Text() + rand.Text()
+
+		sessionMutex.Lock()
+		sessions[sessionToken] = true
+		sessionMutex.Unlock()
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    sessionToken,
+			Path:     "/",
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+		})
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	})
+
+	mux.HandleFunc("POST /logout", func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session")
+		if err == nil {
+			sessionMutex.Lock()
+			delete(sessions, cookie.Value)
+			sessionMutex.Unlock()
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+		})
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	})
 
 	mux.HandleFunc("DELETE /video/{name}", func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
@@ -140,8 +224,33 @@ func newHandler(cfg config.Config) http.Handler {
 	mux.HandleFunc("GET /recordings", func(w http.ResponseWriter, r *http.Request) {
 		writeRecordings(w, cfg.OutputDirectory)
 	})
-	return mux
 
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" || strings.HasPrefix(r.URL.Path, "/static/") {
+			mux.ServeHTTP(w, r)
+			return
+		}
+
+		loggedIn := false
+		cookie, err := r.Cookie("session")
+		if err == nil && cookie.Value != "" {
+			sessionMutex.Lock()
+			loggedIn = sessions[cookie.Value]
+			sessionMutex.Unlock()
+		}
+
+		if !loggedIn {
+			if r.Header.Get("HX-Request") != "" {
+				w.Header().Set("HX-Redirect", "/login")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		mux.ServeHTTP(w, r)
+	})
 }
 
 func serve(ctx context.Context, listener net.Listener, handler http.Handler) error {

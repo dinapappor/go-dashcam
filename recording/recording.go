@@ -29,7 +29,11 @@ func OutputArgs(cfg Config, now time.Time) ([]string, error) {
 	switch cfg.Mode {
 	case Continuous:
 		outputFile := fmt.Sprintf("dashcam_%s.mp4", now.Format("20060102-150405"))
-		outputArgs = append(outputArgs, filepath.Join(cfg.OutputDirectory, outputFile))
+		outputArgs = append(
+			outputArgs,
+			"-movflags", "frag_keyframe+empty_moov+default_base_moof",
+			filepath.Join(cfg.OutputDirectory, outputFile),
+		)
 	case Segmented:
 		if cfg.FrameRate <= 0 {
 			return nil, fmt.Errorf("We need framerate to accurately calculate key frames and segment delta")
@@ -51,6 +55,8 @@ func OutputArgs(cfg Config, now time.Time) ([]string, error) {
 			"-segment_time_delta", fmt.Sprint(1.0/(2*float64(cfg.FrameRate))),
 			"-reset_timestamps", "1",
 			"-strftime", "1",
+			"-segment_format", "mp4",
+			"-segment_format_options", "movflags=frag_keyframe+empty_moov+default_base_moof",
 			filepath.Join(cfg.OutputDirectory, "dashcam_%Y%m%d-%H%M%S.mp4"),
 		)
 	default:

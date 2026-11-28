@@ -19,6 +19,9 @@ func TestHandlerRoutes(t *testing.T) {
 		wantHTML   bool
 	}{
 		{name: "front page", method: http.MethodGet, path: "/", wantStatus: http.StatusOK, wantHTML: true},
+		{name: "recordings page", method: http.MethodGet, path: "/recordings", wantStatus: http.StatusOK, wantHTML: true},
+		{name: "post to recordings page", method: http.MethodPost, path: "/recordings", wantStatus: http.StatusMethodNotAllowed},
+		{name: "post to stats", method: http.MethodPost, path: "/stats", wantStatus: http.StatusMethodNotAllowed},
 		{name: "unknown path", method: http.MethodGet, path: "/nope", wantStatus: http.StatusNotFound},
 		{name: "path below front page", method: http.MethodGet, path: "/index.html", wantStatus: http.StatusNotFound},
 		{name: "post to front page", method: http.MethodPost, path: "/", wantStatus: http.StatusMethodNotAllowed},

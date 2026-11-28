@@ -276,6 +276,8 @@ var protectedRoutes = []struct {
 }{
 	{http.MethodGet, "/"},
 	{http.MethodGet, "/recordings"},
+	{http.MethodGet, "/recordings/list"},
+	{http.MethodGet, "/stats"},
 	{http.MethodGet, "/play/" + finishedRecording},
 	{http.MethodGet, "/video/" + finishedRecording},
 	{http.MethodGet, "/video/" + finishedRecording + "?download=1"},
@@ -407,6 +409,7 @@ func TestNavbarLogoutButton(t *testing.T) {
 	handler := playHandler(t)
 	for _, path := range []string{
 		"/",
+		"/recordings",
 		"/play/" + finishedRecording,
 	} {
 		t.Run(path, func(t *testing.T) {

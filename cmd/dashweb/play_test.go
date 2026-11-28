@@ -173,7 +173,7 @@ func TestPlayActiveRecording(t *testing.T) {
 }
 
 func TestRecordingsPageLinks(t *testing.T) {
-	recorder := get(t, playHandler(t), "/recordings")
+	recorder := get(t, playHandler(t), "/recordings/list")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)

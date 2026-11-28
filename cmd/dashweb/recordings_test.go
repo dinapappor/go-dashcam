@@ -146,7 +146,7 @@ func TestRecordingsPage(t *testing.T) {
 	writeRecording(t, dir, "dashcam_20261123-090000.mp4", 1536)
 	writeRecording(t, dir, "dashcam_20261123-100000.mp4", 2048)
 
-	recorder := get(t, newHandler(testConfig(dir)), "/recordings")
+	recorder := get(t, newHandler(testConfig(dir)), "/recordings/list")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -184,7 +184,7 @@ func TestRecordingsPage(t *testing.T) {
 }
 
 func TestRecordingsPageEmpty(t *testing.T) {
-	recorder := get(t, newHandler(testConfig(t.TempDir())), "/recordings")
+	recorder := get(t, newHandler(testConfig(t.TempDir())), "/recordings/list")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -195,25 +195,59 @@ func TestRecordingsPageEmpty(t *testing.T) {
 }
 
 func TestRecordingsPageMissingDirectory(t *testing.T) {
-	recorder := get(t, newHandler(testConfig(filepath.Join(t.TempDir(), "missing"))), "/recordings")
+	recorder := get(t, newHandler(testConfig(filepath.Join(t.TempDir(), "missing"))), "/recordings/list")
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusInternalServerError)
 	}
 }
 
-func TestFrontPageLoadsRecordings(t *testing.T) {
-	recorder := get(t, newHandler(testConfig(t.TempDir())), "/")
+func TestFullPagesLoadFragments(t *testing.T) {
+	tests := []struct {
+		path     string
+		fragment string
+	}{
+		{path: "/", fragment: "/stats"},
+		{path: "/recordings", fragment: "/recordings/list"},
+	}
+
+	handler := newHandler(testConfig(t.TempDir()))
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			recorder := get(t, handler, tt.path)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+			}
+
+			body := recorder.Body.String()
+			element, found := tagWith(body, "<div", `hx-get="`+tt.fragment+`"`)
+			if !found {
+				t.Fatalf("page has no <div hx-get=%q>:\n%s", tt.fragment, body)
+			}
+			if trigger, _ := attributeValue(element, "<div", "hx-trigger"); trigger != "load, every 10s" {
+				t.Errorf("hx-trigger = %q, want %q", trigger, "load, every 10s")
+			}
+		})
+	}
+}
+
+func TestRecordingsFullPageHasTarget(t *testing.T) {
+	recorder := get(t, newHandler(testConfig(t.TempDir())), "/recordings")
 
 	body := recorder.Body.String()
-	for _, want := range []string{
-		`<script src="/static/htmx.min.js"`,
-		`hx-get="/recordings"`,
-		`hx-trigger="load, every 10s"`,
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("front page does not contain %q:\n%s", want, body)
-		}
+	if _, found := tagWith(body, "<div", `id="recordings"`); !found {
+		t.Errorf("page has no <div id=\"recordings\"> for the delete reply:\n%s", body)
+	}
+	if strings.Contains(body, `hx-get="/stats"`) {
+		t.Errorf("recordings page loads the stats, want them only on the overview:\n%s", body)
+	}
+}
+
+func TestOverviewHasNoRecordingList(t *testing.T) {
+	recorder := get(t, newHandler(testConfig(t.TempDir())), "/")
+
+	if strings.Contains(recorder.Body.String(), `hx-get="/recordings/list"`) {
+		t.Errorf("overview loads the recording list, want only the stats:\n%s", recorder.Body.String())
 	}
 }
 

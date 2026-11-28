@@ -24,6 +24,7 @@ func TestFullPagesHaveSharedHead(t *testing.T) {
 	handler := playHandler(t)
 	for _, path := range []string{
 		"/",
+		"/recordings",
 		"/play/" + finishedRecording,
 	} {
 		t.Run(path, func(t *testing.T) {
@@ -89,6 +90,7 @@ func TestFullPagesHaveNavbar(t *testing.T) {
 	handler := playHandler(t)
 	for _, path := range []string{
 		"/",
+		"/recordings",
 		"/play/" + finishedRecording,
 	} {
 		t.Run(path, func(t *testing.T) {
@@ -97,12 +99,21 @@ func TestFullPagesHaveNavbar(t *testing.T) {
 				t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 			}
 			nav := navSection(t, recorder.Body.String())
-			href, found := linkTo(nav, "Recordings")
-			if !found {
-				t.Fatalf("<nav> has no Recordings link:\n%s", nav)
-			}
-			if href != "/" {
-				t.Errorf("Recordings link href = %q, want %q", href, "/")
+			for _, link := range []struct {
+				text string
+				href string
+			}{
+				{text: "Overview", href: "/"},
+				{text: "Recordings", href: "/recordings"},
+			} {
+				href, found := linkTo(nav, link.text)
+				if !found {
+					t.Errorf("<nav> has no %s link:\n%s", link.text, nav)
+					continue
+				}
+				if href != link.href {
+					t.Errorf("%s link href = %q, want %q", link.text, href, link.href)
+				}
 			}
 			if strings.Contains(nav, "Settings") {
 				t.Errorf("<nav> links Settings before the page exists:\n%s", nav)

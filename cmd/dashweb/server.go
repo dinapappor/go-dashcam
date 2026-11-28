@@ -21,7 +21,17 @@ import (
 	"time"
 
 	"github.com/dinapappor/go-dashcam/config"
+	"github.com/dinapappor/go-dashcam/recording"
 )
+
+type stats struct {
+	Count       int
+	Used        int64
+	Free        int64
+	Total       int64
+	Oldest      time.Time
+	UsedPercent int
+}
 
 //go:embed templates
 var templateFiles embed.FS
@@ -34,6 +44,60 @@ var pages = template.Must(
 		Funcs(template.FuncMap{"formatSize": formatSize}).
 		ParseFS(templateFiles, "templates/*.html"),
 )
+
+func readStats(dir string) (stats, error) {
+	statistics := stats{}
+
+	recordings, err := listRecordingInfo(dir)
+	if err != nil {
+		return stats{}, fmt.Errorf("Could not list recordings: %w", err)
+	}
+
+	for _, r := range recordings {
+		statistics.Used += r.Size
+	}
+
+	free, err := recording.FreeSpace(dir)
+
+	if err != nil {
+		return stats{}, fmt.Errorf("Could not get free space: %w", err)
+	}
+
+	statistics.Free = int64(free)
+
+	total, err := recording.TotalSpace(dir)
+
+	if err != nil {
+		return stats{}, fmt.Errorf("Could not list total space: %w", err)
+	}
+
+	statistics.Total = int64(total)
+
+	statistics.UsedPercent = usedPercent(int64(total), int64(free))
+	statistics.Count = len(recordings)
+	if len(recordings) > 0 {
+		statistics.Oldest = recordings[len(recordings)-1].Time
+	}
+	return statistics, nil
+}
+
+func usedPercent(total int64, free int64) int {
+
+	if total <= 0 {
+		return 0
+	}
+
+	if free > total {
+		return 0
+	}
+
+	if free <= 0 {
+		return 100
+	}
+
+	retVal := (total - free) * 100 / total
+	return int(retVal)
+}
 
 func writeRecordings(w http.ResponseWriter, dir string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -222,7 +286,32 @@ func newHandler(cfg config.Config) http.Handler {
 	})
 
 	mux.HandleFunc("GET /recordings", func(w http.ResponseWriter, r *http.Request) {
+		err := pages.ExecuteTemplate(w, "recordings_page.html", nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("Could not Execute template: %v", err)
+			return
+		}
+	})
+
+	mux.HandleFunc("GET /recordings/list", func(w http.ResponseWriter, r *http.Request) {
 		writeRecordings(w, cfg.OutputDirectory)
+	})
+
+	mux.HandleFunc("GET /stats", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+		statistics, err := readStats(cfg.OutputDirectory)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Printf("Could not read stats: %v", err)
+			return
+		}
+
+		err = pages.ExecuteTemplate(w, "stats.html", statistics)
+		if err != nil {
+			log.Printf("Could not render the stats: %v", err)
+		}
 	})
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

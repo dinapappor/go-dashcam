@@ -1,0 +1,4 @@
+{{template "header" .}}
+{{template "navbar"}}
+        <div id="recordings" hx-get="/recordings/list" hx-trigger="load, every 10s"></div>
+{{template "footer" .}}

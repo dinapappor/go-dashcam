@@ -177,7 +177,7 @@ func attributeValue(body, element, attribute string) (string, bool) {
 func TestRecordingsPageDeleteButtons(t *testing.T) {
 	setup := newDeleteSetup(t)
 
-	recorder := get(t, setup.handler, "/recordings")
+	recorder := get(t, setup.handler, "/recordings/list")
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)

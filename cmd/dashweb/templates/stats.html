@@ -1,0 +1,40 @@
+<div class="container-xl my-3">
+<div class="row row-deck row-cards">
+    <div class="col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Recordings</div>
+                <div class="h1 mb-0">{{.Count}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Storage used</div>
+                <div class="h1 mb-0">{{formatSize .Used}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Free space</div>
+                <div class="h1 mb-2">{{formatSize .Free}}</div>
+                <div class="progress progress-sm">
+                    <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.UsedPercent}}" style="width: {{.UsedPercent}}%"></div>
+                </div>
+                <small class="text-secondary">{{.UsedPercent}}% used of {{formatSize .Total}}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Oldest recording</div>
+                <div class="h3 mb-0">{{if .Oldest.IsZero}}None{{else}}{{.Oldest.Format "2006-01-02 15:04:05"}}{{end}}</div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>

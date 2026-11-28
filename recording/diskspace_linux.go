@@ -21,6 +21,18 @@ func FreeSpace(path string) (uint64, error) {
 	return fs.Bavail * uint64(fs.Bsize), nil
 }
 
+func TotalSpace(path string) (uint64, error) {
+	fs := syscall.Statfs_t{}
+
+	err := syscall.Statfs(path, &fs)
+
+	if err != nil {
+		return 0, fmt.Errorf("Unable to check total diskspace: %w", err)
+	}
+
+	return fs.Blocks * uint64(fs.Bsize), nil
+}
+
 func ListRecordings(path string) ([]string, error) {
 	var foundRecordings []string
 

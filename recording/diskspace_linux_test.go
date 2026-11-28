@@ -32,6 +32,37 @@ func TestFreeSpaceNonExistantPath(t *testing.T) {
 	}
 }
 
+func TestTotalSpace(t *testing.T) {
+	dir := t.TempDir()
+
+	total, err := TotalSpace(dir)
+	if err != nil {
+		t.Fatalf("TotalSpace: %v", err)
+	}
+	if total == 0 {
+		t.Fatalf("total = 0, want more than zero on a real path")
+	}
+
+	free, err := FreeSpace(dir)
+	if err != nil {
+		t.Fatalf("FreeSpace: %v", err)
+	}
+	if free > total {
+		t.Errorf("free %d is more than total %d", free, total)
+	}
+}
+
+func TestTotalSpaceNonExistantPath(t *testing.T) {
+	total, err := TotalSpace(filepath.Join(t.TempDir(), "missing"))
+
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("err = %v, want os.ErrNotExist", err)
+	}
+	if total != 0 {
+		t.Errorf("total = %d, want 0 on a missing path", total)
+	}
+}
+
 func TestListRecordings(t *testing.T) {
 	dir := t.TempDir()
 
